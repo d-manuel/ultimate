@@ -51,6 +51,8 @@ import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersect
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
 import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
+import petruchio.pn.Place;
+import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
 
 /**
  * Creates intersection of Buchi Petri net and buchi automata (eagerly).
@@ -85,10 +87,154 @@ public class BuchiIntersect<LETTER, PLACE>
 		constructIntersectionNet();
 		mLogger.info(exitMessage());
 	}
+	// -------------------------------------------
 
+	private boolean isSelfLoopOptimizable(LETTER label) {
+		for (final PLACE state : mBuchiAutomata.getStates()) {
+			if (!isSelfLoop(state, label))
+				return false;
+		}
+		return true;
+	}
+
+	// returns true if the place as at least one transition with label 'label' that
+	// forms a self loop
+	private boolean isSelfLoop(PLACE state, LETTER label) {
+		for (OutgoingInternalTransition<LETTER, PLACE> succ : mBuchiAutomata.internalSuccessors(state, label)) {
+			if (succ.getSucc().equals(state)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private final void addOptimizedTransitions() {
+		for (final Transition<LETTER, PLACE> petriTransition : mPetriNet.getTransitions()) {
+			mLogger.info("current petri trans: %s", petriTransition);
+			Set<PLACE> pPreset = petriTransition.getPredecessors();
+			Set<PLACE> pPostset = petriTransition.getSuccessors();
+			LETTER pLabel = petriTransition.getSymbol();
+
+			boolean isSelfLoopOptimizable = isSelfLoopOptimizable(pLabel);
+			if (isSelfLoopOptimizable) {
+				mLogger.warn(String.format(" \"%s\" is %s optimizble", pLabel, isSelfLoopOptimizable ? "" : "not"));
+				addNondeterministicTransition(pLabel, pPreset, pPostset);
+
+				// create 1-2 transitions create optimized state one transitions
+
+				// TODO check correctness again of this condition
+				boolean succAccepting = petriTransition.getSuccessors().stream()
+						.anyMatch(t -> mPetriNet.getAcceptingPlaces().contains(t));
+
+				addOptimizedStateOneTransitions(pLabel, pPreset, pPostset, succAccepting);
+				addOptimizedStateTwoTransitions(pLabel, pPreset, pPostset);
+			} else { // not selfloop optimizable
+				// old
+				for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
+					for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomata
+							.internalSuccessors(buchiPlace, petriTransition.getSymbol())) {
+						addStateOneAndTwoTransition(petriTransition, buchiTransition, buchiPlace);
+					}
+				}
+
+			}
+		}
+	}
+
+	private final void addNondeterministicTransition(LETTER label, Set<PLACE> pPreset, Set<PLACE> pPostset) {
+		mIntersectionNet.addTransition(label, ImmutableSet.of(pPreset), ImmutableSet.of(pPostset));
+		mLogger.debug("adding nondeterministic transition for label %s with preset; %s ; postset: %s", label, pPreset,
+				pPostset);
+	}
+
+	// only gets called when pTrans is accepting. old version where we didn't
+	// respect NBA's yet
+	private void addOneTwoTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset) {
+		for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
+			mLogger.info("buchi place: %s", buchiPlace);
+			mLogger.info("preset: %s", preset);
+			mLogger.info("postset: %s", postset);
+			// preset
+			final Set<PLACE> intersectionPredecessors = new HashSet<>(preset); // I need a deep copy and cannot use the
+																				// reference.
+			intersectionPredecessors.add(mInputQGetQ1.get(buchiPlace));
+			mLogger.info("intersectioPRedeccesors: %s", intersectionPredecessors);
+//			var q_predecessors = mBuchiAutomata.internalPredecessors(buchiPlace);
+//			for (var q_predecessor : q_predecessors) {
+//			mLogger.info("qpredecessor:%s",q_predecessor);
+//				intersectionPredecessors.add(mInputQGetQ1.get(q_predecessor));
+//			}
+			// postset
+			final Set<PLACE> intersectionSuccessors = new HashSet<>(postset); // I need a deep copy and cannot use the
+																				// reference.
+
+			for (final OutgoingInternalTransition<LETTER, PLACE> q_successor : mBuchiAutomata
+					.internalSuccessors(buchiPlace, label)) {
+				mLogger.info("qsuccessor: %s", q_successor.getSucc());
+				// TODO das darf ich nicht einfach so machen:
+				intersectionSuccessors.add(mInputQGetQ2.get(q_successor.getSucc()));
+			}
+			mLogger.info("intersectionSucc: %s", intersectionSuccessors);
+			mIntersectionNet.addTransition(label, ImmutableSet.of(intersectionPredecessors),
+					ImmutableSet.of(intersectionSuccessors));
+		}
+	}
+
+	private void addOptimizedStateTwoTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset) {
+		for (final PLACE bPlace : mBuchiAutomata.getStates()) {
+			for (final OutgoingInternalTransition<LETTER, PLACE> bTransition : mBuchiAutomata.internalSuccessors(bPlace,
+					label)) {
+				final Set<PLACE> intersectionPredecessors = new HashSet<>(preset);
+				intersectionPredecessors.add(mInputQGetQ2.get(bPlace));
+
+				final Set<PLACE> intersectionSuccessors = new HashSet<>(postset); 
+				boolean bAccepting = mBuchiAutomata.getFinalStates().contains(bTransition.getSucc());
+				boolean isSelfLoop = bTransition.getSucc().equals(bPlace);
+				if (bAccepting && isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ1.get(bTransition.getSucc()));
+				else if (!bAccepting && isSelfLoop)
+					continue;
+				else if (bAccepting && !isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ1.get(bTransition.getSucc()));
+				else if (!bAccepting && !isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ1.get(bTransition.getSucc()));
+				mIntersectionNet.addTransition(label, ImmutableSet.of(intersectionPredecessors),
+						ImmutableSet.of(intersectionSuccessors));
+			}
+		}
+
+	}
+
+	private void addOptimizedStateOneTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset,
+			boolean succAccepting) {
+		for (final PLACE bPlace : mBuchiAutomata.getStates()) {
+			for (final OutgoingInternalTransition<LETTER, PLACE> bTransition : mBuchiAutomata.internalSuccessors(bPlace,
+					label)) {
+				final Set<PLACE> intersectionPredecessors = new HashSet<>(preset);
+				intersectionPredecessors.add(mInputQGetQ1.get(bPlace));
+
+				boolean isSelfLoop = bTransition.getSucc().equals(bPlace);
+				final Set<PLACE> intersectionSuccessors = new HashSet<>(postset);
+				if (succAccepting && isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ2.get(bTransition.getSucc()));
+				else if (succAccepting && !isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ1.get(bTransition.getSucc()));
+				else if (!succAccepting && isSelfLoop)
+					continue;
+				else if (!succAccepting && !isSelfLoop)
+					intersectionSuccessors.add(mInputQGetQ1.get(bTransition.getSucc()));
+
+				mIntersectionNet.addTransition(label, ImmutableSet.of(intersectionPredecessors),
+						ImmutableSet.of(intersectionSuccessors));
+			}
+		}
+	};
+
+	// -------------------------------------------
 	private final void constructIntersectionNet() {
 		addPlacesToIntersectionNet();
-		addTransitionsToIntersectionNet();
+//		addTransitionsToIntersectionNet();
+		addOptimizedTransitions();
 	}
 
 	private final void addPlacesToIntersectionNet() {
@@ -201,16 +347,13 @@ public class BuchiIntersect<LETTER, PLACE>
 	@Override
 	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
 			throws AutomataLibraryException {
-		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa =
-				(new BuchiPetriNet2FiniteAutomaton<>(mServices, stateFactory,
-						(IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
-		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa =
-				(new BuchiPetriNet2FiniteAutomaton<>(mServices, stateFactory,
-						(IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
+		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
+				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
+		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
+				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
 
-		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection =
-				new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(mServices,
-						(IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
+		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
+				mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
 
 		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
 				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
@@ -227,6 +370,8 @@ public class BuchiIntersect<LETTER, PLACE>
 			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
 			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
 		}
+		// TODO tests wieder reinmachen!!!
 		return isSubset.getResult() && isSuperset.getResult();
+//		return true;
 	}
 }
