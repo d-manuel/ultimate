@@ -151,38 +151,6 @@ public class BuchiIntersect<LETTER, PLACE>
 				pPostset);
 	}
 
-	// only gets called when pTrans is accepting. old version where we didn't
-	// respect NBA's yet
-	private void addOneTwoTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset) {
-		for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
-			mLogger.info("buchi place: %s", buchiPlace);
-			mLogger.info("preset: %s", preset);
-			mLogger.info("postset: %s", postset);
-			// preset
-			final Set<PLACE> intersectionPredecessors = new HashSet<>(preset); // I need a deep copy and cannot use the
-																				// reference.
-			intersectionPredecessors.add(mInputQGetQ1.get(buchiPlace));
-			mLogger.info("intersectioPRedeccesors: %s", intersectionPredecessors);
-//			var q_predecessors = mBuchiAutomata.internalPredecessors(buchiPlace);
-//			for (var q_predecessor : q_predecessors) {
-//			mLogger.info("qpredecessor:%s",q_predecessor);
-//				intersectionPredecessors.add(mInputQGetQ1.get(q_predecessor));
-//			}
-			// postset
-			final Set<PLACE> intersectionSuccessors = new HashSet<>(postset); // I need a deep copy and cannot use the
-																				// reference.
-
-			for (final OutgoingInternalTransition<LETTER, PLACE> q_successor : mBuchiAutomata
-					.internalSuccessors(buchiPlace, label)) {
-				mLogger.info("qsuccessor: %s", q_successor.getSucc());
-				intersectionSuccessors.add(mInputQGetQ2.get(q_successor.getSucc()));
-			}
-			mLogger.info("intersectionSucc: %s", intersectionSuccessors);
-			mIntersectionNet.addTransition(label, ImmutableSet.of(intersectionPredecessors),
-					ImmutableSet.of(intersectionSuccessors));
-		}
-	}
-
 	private void addOptimizedStateTwoTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset) {
 		for (final PLACE bPlace : mBuchiAutomata.getStates()) {
 			for (final OutgoingInternalTransition<LETTER, PLACE> bTransition : mBuchiAutomata.internalSuccessors(bPlace,
