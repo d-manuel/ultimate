@@ -1,0 +1,35 @@
+  // Author: Manuel
+// Date: 2023-06-29
+
+PetriNet net = (
+  alphabet = {a b},
+  places = {p1 p2},
+  transitions = {
+    ({p1} a {p1}) 
+    ({p2} b {p2}) 
+  },
+  initialMarking = {p1 p2},
+  acceptingPlaces = {p1}
+);
+
+NestedWordAutomaton nwa = (
+	callAlphabet = {},
+	internalAlphabet = {a b},
+	returnAlphabet = {},
+	states = {q1 q2 q3 q4},
+	initialStates = {q1},
+	finalStates = {q2 q4},
+	callTransitions = {},
+	internalTransitions = {
+		(q1 a q1)
+		(q1 b q2)
+		(q2 a q2)
+		(q2 b q3)
+		(q3 a q3)
+		(q3 b q4)
+		(q4 a q4)
+	},
+	returnTransitions = {}
+);
+
+print(buchiIntersect(net, nwa));
