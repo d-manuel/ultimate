@@ -44,6 +44,7 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.N
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriBuchiIntersectionNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
@@ -53,6 +54,7 @@ import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
 import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 import petruchio.pn.Place;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriBuchiIntersectionNet;
 
 /**
  * Creates intersection of Buchi Petri net and buchi automata (eagerly).
@@ -71,7 +73,8 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
 	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
-	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+//	private PetriBuchiIntersectionNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -84,6 +87,7 @@ public class BuchiIntersect<LETTER, PLACE>
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
+//		mIntersectionNet = new PetriBuchiIntersectionNet<>(services, petriNet.getAlphabet(), false);
 		constructIntersectionNet();
 		mLogger.info(exitMessage());
 	}
@@ -125,7 +129,7 @@ public class BuchiIntersect<LETTER, PLACE>
 				// TODO check correctness again of this condition
 				boolean succAccepting = petriTransition.getSuccessors().stream()
 						.anyMatch(t -> mPetriNet.getAcceptingPlaces().contains(t));
-
+				
 				addOptimizedStateOneTransitions(pLabel, pPreset, pPostset, succAccepting);
 				addOptimizedStateTwoTransitions(pLabel, pPreset, pPostset);
 			} else { // not selfloop optimizable
@@ -171,7 +175,6 @@ public class BuchiIntersect<LETTER, PLACE>
 			for (final OutgoingInternalTransition<LETTER, PLACE> q_successor : mBuchiAutomata
 					.internalSuccessors(buchiPlace, label)) {
 				mLogger.info("qsuccessor: %s", q_successor.getSucc());
-				// TODO das darf ich nicht einfach so machen:
 				intersectionSuccessors.add(mInputQGetQ2.get(q_successor.getSucc()));
 			}
 			mLogger.info("intersectionSucc: %s", intersectionSuccessors);
@@ -208,6 +211,22 @@ public class BuchiIntersect<LETTER, PLACE>
 	private void addOptimizedStateOneTransitions(LETTER label, Set<PLACE> preset, Set<PLACE> postset,
 			boolean succAccepting) {
 		for (final PLACE bPlace : mBuchiAutomata.getStates()) {
+
+			// WRONG: Minimization
+			// TODO DELETE OR CORRECT
+			// check if bPlace as incoming transition from an accepting state or is initial. otherwise it can never get a token in the intersection
+//			if (!mBuchiAutomata.isInitial(bPlace)) {
+//				boolean predAccepting = false;
+//				for (var predTrans : mBuchiAutomata.internalPredecessors(bPlace)) {
+//					if (mBuchiAutomata.isFinal(predTrans.getPred())) {
+//						predAccepting = true;
+//						break;
+//					}
+//				}
+//				if (!predAccepting)
+//					return;
+//			}
+			
 			for (final OutgoingInternalTransition<LETTER, PLACE> bTransition : mBuchiAutomata.internalSuccessors(bPlace,
 					label)) {
 				final Set<PLACE> intersectionPredecessors = new HashSet<>(preset);
@@ -235,6 +254,13 @@ public class BuchiIntersect<LETTER, PLACE>
 		addPlacesToIntersectionNet();
 //		addTransitionsToIntersectionNet();
 		addOptimizedTransitions();
+
+		// testing removing procedure
+//		while(mIntersectionNet.getTransitions().size() > 0) {
+//			var n = mIntersectionNet.getTransitions().iterator().next();
+//			mLogger.info("next %s",n);
+//			mIntersectionNet.removeTransition(n);
+//		}
 	}
 
 	private final void addPlacesToIntersectionNet() {
@@ -343,6 +369,9 @@ public class BuchiIntersect<LETTER, PLACE>
 		return mIntersectionNet;
 	}
 
+	/**
+	 *
+	 */
 	@SuppressWarnings("unchecked")
 	@Override
 	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
