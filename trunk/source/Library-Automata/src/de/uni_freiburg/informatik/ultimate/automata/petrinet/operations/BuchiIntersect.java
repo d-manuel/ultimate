@@ -44,7 +44,6 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.N
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriBuchiIntersectionNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
@@ -52,9 +51,6 @@ import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersect
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
 import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
-import petruchio.pn.Place;
-import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriBuchiIntersectionNet;
 
 /**
  * Creates intersection of Buchi Petri net and buchi automata (eagerly).
@@ -74,7 +70,6 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
-//	private PetriBuchiIntersectionNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -87,7 +82,6 @@ public class BuchiIntersect<LETTER, PLACE>
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
-//		mIntersectionNet = new PetriBuchiIntersectionNet<>(services, petriNet.getAlphabet(), false);
 		constructIntersectionNet();
 		mLogger.info(exitMessage());
 	}
@@ -222,13 +216,6 @@ public class BuchiIntersect<LETTER, PLACE>
 		addPlacesToIntersectionNet();
 //		addTransitionsToIntersectionNet();
 		addOptimizedTransitions();
-
-		// testing removing procedure
-//		while(mIntersectionNet.getTransitions().size() > 0) {
-//			var n = mIntersectionNet.getTransitions().iterator().next();
-//			mLogger.info("next %s",n);
-//			mIntersectionNet.removeTransition(n);
-//		}
 	}
 
 	private final void addPlacesToIntersectionNet() {
@@ -367,8 +354,6 @@ public class BuchiIntersect<LETTER, PLACE>
 			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
 			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
 		}
-		// TODO tests wieder reinmachen!!!
 		return isSubset.getResult() && isSuperset.getResult();
-//		return true;
 	}
 }
