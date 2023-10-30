@@ -120,16 +120,16 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 				new AutomataLibraryServices(mServices), mDefaultStateFactory, interpolantAutomaton, stateDeterminizer);
 		mBenchmarkGenerator.reportHighestRank(complNwa.getHighestRank());
 
-//		// Add check for outgoingLoop optimization here
-//		boolean b = true;
-//		// TODO I should use getFinalStates with caution?!
-//		for (var x  : complNwa.getResult().getFinalStates()) {
-//			for (var y : complNwa.getResult().internalSuccessors(x)) {
-//				if (!complNwa.getResult().getFinalStates().contains(y.getSucc()))
-//					b = false;
-//			}
-//		}
-//		mLogger.info("this is b: %s",b);
+		// Add check for outgoingLoop optimization here
+		boolean b = true;
+		// TODO I should use getFinalStates with caution?!
+		for (var x  : complNwa.getResult().getFinalStates()) {
+			for (var y : complNwa.getResult().internalSuccessors(x)) {
+				if (!complNwa.getResult().getFinalStates().contains(y.getSucc()))
+					b = false;
+			}
+		}
+		mLogger.error("this is b: %s",b);
 //		if(b)
 //			return refineFinite(abstraction, (INwaOutgoingLetterAndTransitionProvider<L, IPredicate>) complNwa.getResult());
 
