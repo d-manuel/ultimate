@@ -94,7 +94,7 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 		}
 		
 			
-//		mLogger.info(exitMessage());
+		mLogger.info(exitMessage());
 	}
 	private final void constructOptimizedIntersectionNet(){
 		addPlacesToIntersectionNet();

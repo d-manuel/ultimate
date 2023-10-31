@@ -75,7 +75,9 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 
 // 	private boolean REMOVE_DEAD_OPTIMIZATION = false;
  	private final boolean GOAL_TRAP_OPTIMIZATION = false;
- 	private final boolean SELF_LOOP_OPTIMIZATION = true;
+ 	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION= false;
+// 	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
+ 	private final boolean SELF_LOOP_OPTIMIZATION = false;
 
  	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
  			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -95,6 +97,14 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomata);
  			// TODO why type casting here necessary?
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+ 		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton()) {
+ 			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection = 
+ 					new BuchiIntersectAllGoalAutomaton<>(services, factory, petriNet, buchiAutomata);
+ 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+// 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet()) {
+// 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
+// 					new BuchiIntersectAllAcceptingtNet<>(services, factory, petriNet, buchiAutomata);
+// 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
  		} else if (SELF_LOOP_OPTIMIZATION) {
  			final BuchiIntersectDefault<LETTER, PLACE> intersection = 
  					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
@@ -108,6 +118,22 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  		mLogger.info(exitMessage());
  	}
  	// -------------------------------------------
+ 	private boolean isAllGoalAutomaton() {
+ 		for (var state : mBuchiAutomata.getStates()) {
+ 			if (!mBuchiAutomata.getFinalStates().contains(state)) {
+ 				return false;
+ 			}
+ 		}
+ 		return true;
+ 	}
+ 	private boolean isAllAcceptingNet() { 
+ 		for (var place : mPetriNet.getPlaces()) {
+ 			if (!mPetriNet.isAccepting(place)) {
+ 				return false;
+ 			}
+ 		}
+ 		return true;
+ 	}
  	private boolean isGoalTrapped() {
 		for (var x  : mBuchiAutomata.getFinalStates()) {
 			for (var y : mBuchiAutomata.internalSuccessors(x)) {
