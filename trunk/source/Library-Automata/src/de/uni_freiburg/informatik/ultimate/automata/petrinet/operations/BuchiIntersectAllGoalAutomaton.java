@@ -112,28 +112,11 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 					successors.add(buchiTransition.getSucc());
 
 					var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors), ImmutableSet.of(successors));
-					mLogger.info("Added transition " + transitionToString(trans1));
+					mLogger.info("Added transition " + Utils.transitionToString(trans1));
 				}
 			}
 		}
 	}
-//------------------------------
-	// for debugging
-	private String transitionToString(Transition<LETTER, PLACE> trans) {
-		String res = "{";
-		res += "{";
-		for (var pre : trans.getPredecessors()) {
-			res += " " + pre.toString() + " ";
-		}
-		res += "} " + trans.getSymbol() + " {";
-		for (var suc : trans.getSuccessors()) {
-			res += " " + suc.toString() + " ";
-		}
-		res += "}}";
-		return res;
-	}
-//------------------------------
-
 
 	@Override
 	public String startMessage() {
