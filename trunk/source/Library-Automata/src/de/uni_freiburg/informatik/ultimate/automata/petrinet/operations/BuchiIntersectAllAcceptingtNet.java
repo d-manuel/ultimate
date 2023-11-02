@@ -40,21 +40,21 @@ import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2Finit
 import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
 /**
- * Creates intersection of a Büchi-Petri net and an all goal Büchi automaton
+ * Creates intersection of a Büchi-Petri net with only accepting states and a Büchi automat
  *
  * @param <LETTER>
  * @param <PLACE>
  *
  * @author Manuel Dienert
  */
-public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
+public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
-	public BuchiIntersectAllGoalAutomaton(final AutomataLibraryServices services,
+	public BuchiIntersectAllAcceptingtNet(final AutomataLibraryServices services,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
 		super(services);
 		mPetriNet = petriNet;
@@ -63,6 +63,7 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 		if (buchiAutomata.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
+
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
 		constructIntersection();
@@ -83,14 +84,13 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 
 	private final void addPetriPlaces() {
 		for (final PLACE place : mPetriNet.getPlaces()) {
-			mIntersectionNet.addPlace(place, mPetriNet.getInitialPlaces().contains(place), mPetriNet.isAccepting(place));
+			mIntersectionNet.addPlace(place, mPetriNet.getInitialPlaces().contains(place), false);
 		}
 	}
 
 	private final void addBuchiPlaces() {
 		for (final PLACE state : mBuchiAutomata.getStates()) {
-			mIntersectionNet.addPlace(state, mBuchiAutomata.isInitial(state), false);
-
+			mIntersectionNet.addPlace(state, mBuchiAutomata.isInitial(state), mBuchiAutomata.isFinal(state));
 		}
 	}
 
@@ -112,7 +112,6 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 			}
 		}
 	}
-
 	@Override
 	public String startMessage() {
 		return "Starting Intersection with all goal automaton";

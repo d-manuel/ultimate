@@ -2,6 +2,8 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  /*
   * Copyright (C) 2022-2023 Daniel Küchler (kuechlerdaniel33@gmail.com)
   * Copyright (C) 2022-2023 University of Freiburg
+  * Copyright (C) 2023-2024 Manuel Dienert
+  * Copyright (C) 2023-2024 University of Freiburg
   *
   * This file is part of the ULTIMATE Automata Library.
   *
@@ -26,14 +28,10 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
   * to convey the resulting work.
   */
 
- import java.util.HashMap;
- import java.util.HashSet;
- import java.util.Map;
- import java.util.Set;
+import java.util.stream.Stream;
 
- import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
+import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
- import de.uni_freiburg.informatik.ultimate.automata.AutomataOperationCanceledException;
  import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
  import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
  import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
@@ -41,17 +39,13 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
  import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
  import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
  import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
- import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
  import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
  import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
- import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
  import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
  import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
  import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
  import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
- import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
  /**
   * Abstract class for the intersection of a  Büchi-Petri Net and a Büchi automaton.
@@ -67,16 +61,13 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  	private final IPetriNet<LETTER, PLACE> mPetriNet;
  	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
  	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
- 	private final Map<PLACE, PLACE> mInputQGetQ1 = new HashMap<>();
- 	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
- 	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
  	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 // 	private boolean REMOVE_DEAD_OPTIMIZATION = false;
  	private final boolean GOAL_TRAP_OPTIMIZATION = false;
  	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION= false;
-// 	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
+ 	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
  	private final boolean SELF_LOOP_OPTIMIZATION = false;
 
  	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
@@ -101,10 +92,10 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection = 
  					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-// 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet()) {
-// 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
-// 					new BuchiIntersectAllAcceptingtNet<>(services, factory, petriNet, buchiAutomata);
-// 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+ 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet()) {
+ 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
+ 					new BuchiIntersectAllAcceptingtNet<>(services, petriNet, buchiAutomata);
+ 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
  		} else if (SELF_LOOP_OPTIMIZATION) {
  			final BuchiIntersectDefault<LETTER, PLACE> intersection = 
  					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
@@ -119,30 +110,23 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  	}
  	// -------------------------------------------
  	private boolean isAllGoalAutomaton() {
- 		for (var state : mBuchiAutomata.getStates()) {
- 			if (!mBuchiAutomata.getFinalStates().contains(state)) {
- 				return false;
- 			}
- 		}
- 		return true;
+ 		Stream<PLACE> states = mBuchiAutomata.getStates().stream();
+ 		return states.allMatch(state -> mBuchiAutomata.getFinalStates().contains(state));
  	}
  	private boolean isAllAcceptingNet() { 
- 		for (var place : mPetriNet.getPlaces()) {
- 			if (!mPetriNet.isAccepting(place)) {
- 				return false;
+ 		Stream<PLACE> places = mPetriNet.getPlaces().stream();
+ 		return places.allMatch(place -> mPetriNet.isAccepting(place));
+ 	}
+ 	private boolean isGoalTrapped() {
+ 		for (var x  : mBuchiAutomata.getFinalStates()) {
+ 			for (var y : mBuchiAutomata.internalSuccessors(x)) {
+ 				if (!mBuchiAutomata.getFinalStates().contains(y.getSucc())) {
+ 					return false;
+ 				}
  			}
  		}
  		return true;
  	}
- 	private boolean isGoalTrapped() {
-		for (var x  : mBuchiAutomata.getFinalStates()) {
-			for (var y : mBuchiAutomata.internalSuccessors(x)) {
-				if (!mBuchiAutomata.getFinalStates().contains(y.getSucc()))
-					return false;
-			}
-		}
-		return true;
-	}
 
  	@Override
  	public String startMessage() {
