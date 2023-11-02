@@ -56,15 +56,10 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
-	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
-//	private final IPetriPlaceFactory mBuchiPlaceFactory;
-
-	// TODO Find variant without this:
-	private final Map<PLACE, PLACE> mInputQGetQ = new HashMap<>(); // Intersection Petri Places 
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
-	public BuchiIntersectAllGoalAutomaton(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
+	public BuchiIntersectAllGoalAutomaton(final AutomataLibraryServices services,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
 		super(services);
 		mPetriNet = petriNet;
@@ -73,8 +68,6 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 		if (buchiAutomata.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
-		mLabeledBuchiPlaceFactory = factory;
-
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
 		constructIntersection();
@@ -101,11 +94,7 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 
 	private final void addBuchiPlaces() {
 		for (final PLACE state : mBuchiAutomata.getStates()) {
-			final PLACE q = mLabeledBuchiPlaceFactory.getWhiteContent(state);
-			mInputQGetQ.put(state, q);
-			mIntersectionNet.addPlace(q, mBuchiAutomata.isInitial(state), false);
-					//TODO how to create a new place so I can add it to the inputPgetP???/
-//					mIntersectionNet.addPlace(state, mBuchiAutomata.isInitial(state), false);
+			mIntersectionNet.addPlace(state, mBuchiAutomata.isInitial(state), false);
 
 		}
 	}
@@ -118,9 +107,9 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 						.internalSuccessors(buchiPlace,label )) {
 
 					Set<PLACE> predecessors = new HashSet<>(petriTransition.getPredecessors());
-					predecessors.add(mInputQGetQ.get(buchiPlace));
+					predecessors.add(buchiPlace);
 					Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors());
-					successors.add(mInputQGetQ.get(buchiTransition.getSucc()));
+					successors.add(buchiTransition.getSucc());
 
 					var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors), ImmutableSet.of(successors));
 					mLogger.info("Added transition " + transitionToString(trans1));
@@ -144,6 +133,7 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 		return res;
 	}
 //------------------------------
+
 
 	@Override
 	public String startMessage() {

@@ -99,7 +99,7 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
  		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton()) {
  			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection = 
- 					new BuchiIntersectAllGoalAutomaton<>(services, factory, petriNet, buchiAutomata);
+ 					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 // 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet()) {
 // 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
