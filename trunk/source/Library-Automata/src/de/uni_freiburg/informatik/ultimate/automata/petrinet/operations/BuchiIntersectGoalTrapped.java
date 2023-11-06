@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
@@ -100,13 +101,13 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 	}
 
 	private final void addPetriPlaces() {
-		for (final PLACE place : mPetriNet.getPlaces()) {
-			mIntersectionNet.addPlace(place, mPetriNet.getInitialPlaces().contains(place), false);
-		}
+		Stream<PLACE> places = mPetriNet.getPlaces().stream();
+		places.forEach(place -> mIntersectionNet.addPlace(place, mPetriNet.getInitialPlaces().contains(place), false));
 	}
 
 	private final void addBuchiPlaces() {
-		for (final PLACE state : mBuchiAutomata.getStates()) {
+		Set<PLACE> states = mBuchiAutomata.getStates();
+		for (final PLACE state : states) {
 			final PLACE qi1 = mLabeledBuchiPlaceFactory.getWhiteContent(state);
 			mIntersectionNet.addPlace(qi1, mBuchiAutomata.isInitial(state), false);
 			mInputQGetQ1.put(state, qi1);
@@ -145,21 +146,16 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		successors.add(mInputQGetQ1.get(buchiTransition.getSucc())); // F4
 
 		var trans_1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors), ImmutableSet.of(successors));
-		mLogger.info("Added stem transition " + transitionToString(trans_1));
+		mLogger.info("Added stem transition " + Utils.transitionToString(trans_1));
 	}
 
 	private final void syncToGoalTransition(final Transition<LETTER, PLACE> petriTransition,
 			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final PLACE buchiPredecessor) {
 
-		boolean petriTransAccepting = false;
+		Stream<PLACE> places = petriTransition.getSuccessors().stream();
 		// check if petriTrans fires into accepting place (so the P_acceptnace
 		// condition).
-		for (final PLACE place : petriTransition.getSuccessors()) {
-			if (mPetriNet.getAcceptingPlaces().contains(place)) {
-				petriTransAccepting = true;
-				break;
-			}
-		}
+		boolean petriTransAccepting = places.anyMatch(place -> mPetriNet.getAcceptingPlaces().contains(place)); 
 		LETTER label = petriTransition.getSymbol();
 
 		// successor is equal between both transitions because we do not need to
@@ -175,29 +171,12 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		predecessors2.add(mInputQGetQ2.get(buchiPredecessor)); // F5 i=2
 		var trans_1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1),
 				ImmutableSet.of(successors));
-		mLogger.info("Added goal transition " + transitionToString(trans_1));
+		mLogger.info("Added goal transition " + Utils.transitionToString(trans_1));
 		var trans_2 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2),
 				ImmutableSet.of(successors));
-		mLogger.info("Added goal transition " + transitionToString(trans_2));
+		mLogger.info("Added goal transition " + Utils.transitionToString(trans_2));
 	}
 	
-//------------------------------
-	// for debugging
-	private String transitionToString(Transition<LETTER, PLACE> trans) {
-		String res = "{";
-		res += "{";
-		for (var pre : trans.getPredecessors()) {
-			res += " " + pre.toString() + " ";
-		}
-		res += "} " + trans.getSymbol() + " {";
-		for (var suc : trans.getSuccessors()) {
-			res += " " + suc.toString() + " ";
-		}
-		res += "}}";
-		return res;
-	}
-//------------------------------
-
 	@Override
 	public String startMessage() {
 		return "Starting Intersection with goal trap optimization";

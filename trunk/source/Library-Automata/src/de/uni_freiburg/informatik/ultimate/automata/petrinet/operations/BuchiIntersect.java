@@ -28,31 +28,39 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
   * to convey the resulting work.
   */
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
- import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
- import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaOutgoingLetterAndTransitionProvider;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
- import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
- import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
- import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
- import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
- import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
- import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
- import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
- import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
+import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
+import de.uni_freiburg.informatik.ultimate.automata.AutomataOperationCanceledException;
+import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.AutomatonSccComputation;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaOutgoingLetterAndTransitionProvider;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.RemoveUnreachable;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
+import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
+import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
+import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
+import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
+import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
 
  /**
   * Abstract class for the intersection of a  Büchi-Petri Net and a Büchi automaton.
   *
   * @param <LETTER>
   * @param <PLACE>
-  *
+		*
   * @author Daniel Küchler (kuechlerdaniel33@gmail.com)
   * @author Manuel Dienert 
   */
@@ -61,7 +69,7 @@ import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  	private final IPetriNet<LETTER, PLACE> mPetriNet;
  	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
  	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
-
+ 	
  	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 // 	private boolean REMOVE_DEAD_OPTIMIZATION = false;
@@ -69,6 +77,7 @@ import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION= false;
  	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
  	private final boolean SELF_LOOP_OPTIMIZATION = false;
+ 	private final boolean WEAK_AUTOMATON_OPTIMIZATION = true;
 
  	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
  			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -81,20 +90,25 @@ import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  		}
  		mLabeledBuchiPlaceFactory = factory;
  		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
-
+ 		
+ 		mLogger.info("is A weak?" + isWeakAutomaton(services, buchiAutomata));
  		
  		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()){
  			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection = 
  					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomata);
  			// TODO why type casting here necessary?
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton()) {
+ 		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomata)) {
  			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection = 
  					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet()) {
+ 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
  			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
  					new BuchiIntersectAllAcceptingtNet<>(services, petriNet, buchiAutomata);
+ 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+ 		} else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(services,mBuchiAutomata)) {
+ 			final BuchiIntersectWeakAutomaton<LETTER, PLACE> intersection = 
+ 					new BuchiIntersectWeakAutomaton<>(services, mLabeledBuchiPlaceFactory, petriNet, buchiAutomata);
  			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
  		} else if (SELF_LOOP_OPTIMIZATION) {
  			final BuchiIntersectDefault<LETTER, PLACE> intersection = 
@@ -109,15 +123,15 @@ import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  		mLogger.info(exitMessage());
  	}
  	// -------------------------------------------
- 	private boolean isAllGoalAutomaton() {
- 		Stream<PLACE> states = mBuchiAutomata.getStates().stream();
- 		return states.allMatch(state -> mBuchiAutomata.getFinalStates().contains(state));
+ 	public static <LETTER,PLACE> boolean isAllGoalAutomaton(INestedWordAutomaton<LETTER,PLACE> buchiAutomaton) {
+ 		Stream<PLACE> states = buchiAutomaton.getStates().stream();
+ 		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
  	}
- 	private boolean isAllAcceptingNet() { 
- 		Stream<PLACE> places = mPetriNet.getPlaces().stream();
- 		return places.allMatch(place -> mPetriNet.isAccepting(place));
+ 	public static <LETTER,PLACE> boolean isAllAcceptingNet(IPetriNet<LETTER, PLACE> petriNet) { 
+ 		Stream<PLACE> places = petriNet.getPlaces().stream();
+ 		return places.allMatch(place -> petriNet.isAccepting(place));
  	}
- 	private boolean isGoalTrapped() {
+ 	public boolean isGoalTrapped() {
  		for (var x  : mBuchiAutomata.getFinalStates()) {
  			for (var y : mBuchiAutomata.internalSuccessors(x)) {
  				if (!mBuchiAutomata.getFinalStates().contains(y.getSucc())) {
@@ -125,6 +139,34 @@ import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
  				}
  			}
  		}
+ 		return true;
+ 	}
+ 	
+ 	public static <LETTER,PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services, 
+ 			INestedWordAutomaton<LETTER,PLACE> buchiAutomaton) {
+ 		try {
+			NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =  
+					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
+			AutomatonSccComputation<LETTER, PLACE> sccComp =  
+					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting, mBuchiAutomatonAccepting.getStates(), 
+							mBuchiAutomatonAccepting.getStates());
+//			Collection<StronglyConnectedComponent<PLACE>> sccs =  sccComp.getBalls();
+			Stream<StronglyConnectedComponent<PLACE>> sccsStream =  sccComp.getBalls().stream();
+			Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
+			sccsStream.forEach(sccs::add);
+			for (var scc : sccs) {
+				boolean isAcceptingSCC = 
+						scc.getNodes().stream().allMatch(node -> mBuchiAutomatonAccepting.getFinalStates().contains(node));
+				boolean isNonAcceptingScc = 
+						scc.getNodes().stream().allMatch(node -> !mBuchiAutomatonAccepting.getFinalStates().contains(node));
+				if (!isAcceptingSCC && !isNonAcceptingScc) {// accepting SCC has nonaccepting cycle or nonaccepting SCC has an accepting state.
+					return false;
+				}
+			}
+		} catch (AutomataOperationCanceledException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
  		return true;
  	}
 
