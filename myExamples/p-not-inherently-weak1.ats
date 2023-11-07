@@ -1,14 +1,13 @@
-  // Author: Manuel
-// Date: 2023-11-05
+// Author: Manuel
+// Date: 2023-11-07
 
 PetriNet net = (
-  alphabet = {a b},
-  places = {p1 p2},
+  alphabet = {a},
+  places = {p1},
   transitions = {
     ({p1} a {p1}) 
-    ({p2} b {p2}) 
   },
-  initialMarking = {p1 p2},
+  initialMarking = {p1},
   acceptingPlaces = {p1}
 );
 
@@ -16,19 +15,14 @@ NestedWordAutomaton nwa = (
 	callAlphabet = {},
 	internalAlphabet = {a},
 	returnAlphabet = {},
-	states = {q1 q2 q3 q4 q5 q6 q7},
+	states = {q1 q2},
 	initialStates = {q1},
-	finalStates = {q2 q3 q4 q6 q7},
+	finalStates = {q2},
 	callTransitions = {},
 	internalTransitions = {
+    (q1 a q1)
     (q1 a q2)
-    (q2 a q3)
-    (q3 a q4)
-    (q4 a q2)
-    (q3 a q5)
-    (q5 a q6)
-    (q6 a q7)
-    (q7 a q6)
+    (q2 a q1)
 	},
 	returnTransitions = {}
 );
