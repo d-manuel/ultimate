@@ -2,11 +2,10 @@
 // Date: 2023-11-05
 
 PetriNet net = (
-  alphabet = {a b},
+  alphabet = {a},
   places = {p1 p2},
   transitions = {
     ({p1} a {p1}) 
-    ({p2} b {p2}) 
   },
   initialMarking = {p1 p2},
   acceptingPlaces = {p1}

@@ -42,6 +42,7 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.AutomatonSccCompu
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaOutgoingLetterAndTransitionProvider;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.NestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.RemoveUnreachable;
@@ -69,58 +70,47 @@ import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
 public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
-//	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
+	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
-	//new:
-	private  NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonReachable;
 	private final Map<PLACE, PLACE> mInputQGetQ1 = new HashMap<>();
 	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
 	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
-//	TODO remove. Store Accepting Automata directly instead. make it in the constructor.
-	private final AutomataLibraryServices mServices; 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 	
 	private Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
 
+	/**
+	 * Creates the optimized Intersection for weak automata
+	 * 
+	 * @param services
+	 * @param factory
+	 * @param petriNet
+	 * @param buchiAutomaton
+	 * 		An weak automaton
+	 * @param acceptingSccPlaces
+	 * 		All accepting places. 
+	 * 		TODO for now how the accepting places are in the buchiAutomaton parameter is ignored!!
+	 */
 	public BuchiIntersectWeakAutomaton(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable) {
+			final IPetriNet<LETTER, PLACE> petriNet, INestedWordAutomaton<LETTER, PLACE> buchiAutomaton,  Set<PLACE> acceptingSccPlaces) {
 		super(services);
-		mServices = services;
 		mPetriNet = petriNet;
 //		mBuchiAutomata = buchiAutomata;
 		mLogger.info(startMessage());
-		if (buchiAutomatonReachable.getInitialStates().size() != 1) {
+		if (buchiAutomaton.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 		
-		mBuchiAutomatonReachable = buchiAutomatonReachable;
+		mBuchiAutomaton = buchiAutomaton;
 		
-		// TODO I need to throw an error if the automaton is not weak. 
-		// thus it would make sense to have this method here statically in this class. 
-
-		computeAcceptingSccs();
-
+		mAcceptingSccPlaces = acceptingSccPlaces;
+		
 		constructIntersection();
 		
 		mLogger.info(exitMessage());
-	}
-	
-	// This Method assumes that mBuchiAutomaton is indeed a weak automaton!
-	private void computeAcceptingSccs(){
-		AutomatonSccComputation<LETTER, PLACE> sccComp =  
-				new AutomatonSccComputation<>(mServices, mBuchiAutomatonReachable, mBuchiAutomatonReachable.getStates(), 
-						mBuchiAutomatonReachable.getStates());
-		Collection<StronglyConnectedComponent<PLACE>> sccs =  sccComp.getBalls();
-		for (var scc : sccs) {
-			boolean isAcceptingSCC = 
-					scc.getNodes().stream().allMatch(node -> mBuchiAutomatonReachable.getFinalStates().contains(node));
-			if (isAcceptingSCC) {
-				scc.getNodes().stream().forEach(state -> mAcceptingSccPlaces.add(state));
-			}
-		}
 	}
 	
 	private final void constructIntersection() {
@@ -139,14 +129,14 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 	}
 
 	private final void addBuchiPlaces() {
-		for (final PLACE state : mBuchiAutomatonReachable.getStates()) {
+		for (final PLACE state : mBuchiAutomaton.getStates()) {
 			final PLACE qi1 = mLabeledBuchiPlaceFactory.getWhiteContent(state);
-			mIntersectionNet.addPlace(qi1, mBuchiAutomatonReachable.isInitial(state), false);
+			mIntersectionNet.addPlace(qi1, mBuchiAutomaton.isInitial(state), false);
 			mInputQGetQ1.put(state, qi1);
 			mLogger.info("added Buchi Place" + qi1);
 			if (mAcceptingSccPlaces.contains(state)) {
 				final PLACE qi2 = mLabeledBuchiPlaceFactory.getBlackContent(state);
-				mIntersectionNet.addPlace(qi2, false, mBuchiAutomatonReachable.isFinal(state));
+				mIntersectionNet.addPlace(qi2, false, mBuchiAutomaton.isFinal(state));
 				mLogger.info("added Buchi Place" + qi2);
 				mInputQGetQ2.put(state, qi2);
 				mInputQ2GetQ.put(qi2, state);
@@ -156,9 +146,9 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 
 	private final void addTransitions() {
 		for (final Transition<LETTER, PLACE> petriTransition : mPetriNet.getTransitions()) {
-			for (final PLACE buchiPlace : mBuchiAutomatonReachable.getStates()) {
+			for (final PLACE buchiPlace : mBuchiAutomaton.getStates()) {
 				boolean isGoalPlace = mAcceptingSccPlaces.contains(buchiPlace);
-				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomatonReachable
+				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomaton
 						.internalSuccessors(buchiPlace, petriTransition.getSymbol())) {
 					if (isGoalPlace) {
 						syncToGoalTransition(petriTransition, buchiTransition, buchiPlace);
@@ -205,7 +195,7 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 		
 		// we can only go to the qi2 if we go to an accepting state in q_i
 		//TODO improve
-		boolean buchiSuccAccepting = mBuchiAutomatonReachable.getFinalStates().contains(buchiTransition.getSucc());
+		boolean buchiSuccAccepting = mBuchiAutomaton.getFinalStates().contains(buchiTransition.getSucc());
 		Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors()); // F2
 		successors.add((petriTransAccepting&& buchiSuccAccepting) ? mInputQGetQ2.get(buchiTransition.getSucc())
 				: mInputQGetQ1.get(buchiTransition.getSucc())); // F6 or F7

@@ -2,6 +2,7 @@ package de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 
@@ -23,7 +24,7 @@ public class BuchiWeakComp<LETTER,PLACE>
 //	private Set<StronglyConnectedComponent<PLACE>> mAcceptingSccs;
 //	private Set<StronglyConnectedComponent<PLACE>> mNonAcceptingSccs;
 //	private Set<StronglyConnectedComponent<PLACE>> mMixedSccs;
-	private Set<PLACE> mAcceptingSccPlaces;
+	private Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
 	private boolean isWeak;
 	
 	public BuchiWeakComp( final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
@@ -35,11 +36,12 @@ public class BuchiWeakComp<LETTER,PLACE>
 		compute();
 	}
 	
-	private boolean compute() {
+	private void compute() {
 		AutomatonSccComputation<LETTER, PLACE> sccComp =  
 				new AutomatonSccComputation<>(mServices, mBuchiAutomatonReachable, mBuchiAutomatonReachable.getStates(), 
 						mBuchiAutomatonReachable.getStates());
 		this.mSccs =  sccComp.getBalls();
+		// Each SCC either needs to be nonaccepting (no accepting states), accepting (only accepting states) or weakenizable (no cycles with only nonaccepting states)
 		for (var scc : mSccs) {
 			boolean isAcceptingSCC = 
 					scc.getNodes().stream().allMatch(node -> mBuchiAutomatonReachable.getFinalStates().contains(node));
@@ -54,15 +56,30 @@ public class BuchiWeakComp<LETTER,PLACE>
 //				mNonAcceptingSccs.add(scc);
 				continue; 
 			}
-			if (!isAcceptingSCC && !isNonAcceptingSCC) {
+//			 (!isAcceptingSCC && !isNonAcceptingSCC) 
 //				mMixedSccs.add(scc);
-				if (weakenize(scc) == false) 
-					return false;
+			if (isWeakenizable(scc)) {
+				scc.getNodes().stream().forEach(state -> mAcceptingSccPlaces.add(state));
+			}else {
+				this.isWeak = false;
+				return;
+//				return false;
 			}
+
 		}
-		return true;
+//		return true;
+		this.isWeak = true;
+		return;
 	}
-	private boolean weakenize(StronglyConnectedComponent<PLACE> scc) {
+	// returns true if it weakenizable, false if not
+	/**
+	 * 
+	 * @param scc 
+	 * 		A {@link StronglyConnectedComponent} of the Büchi automaton
+	 * @return
+	 * 		True for weakenizable SCCs. So Sccs without nonaccepting loops.
+	 */
+	private boolean isWeakenizable(StronglyConnectedComponent<PLACE> scc) {
 		Set<PLACE> nodes = scc.getNodes();
 		for (PLACE node : nodes) {
 			if (mBuchiAutomatonReachable.isFinal(node))
@@ -76,8 +93,7 @@ public class BuchiWeakComp<LETTER,PLACE>
 		return true;
 	}
 	
-	// returns true if it weakenizable, false if not
-	// TODO also automatically weanizes the SCC
+	// Helper Function for the isWeakenizable method
 	private boolean DFS(Stack<PLACE> stack) {
 		PLACE currentPlace = stack.peek();
 		for (var succTrans : mBuchiAutomatonReachable.internalSuccessors(currentPlace)){
@@ -101,9 +117,11 @@ public class BuchiWeakComp<LETTER,PLACE>
 		return true;
 	}
 
+	public boolean isWeak() {
+		return isWeak;
+	}
 	@Override
-	public Object getResult() {
-		// TODO Auto-generated method stub
-		return null;
+	public Set<PLACE> getResult() {
+		return mAcceptingSccPlaces;
 	}
 }
