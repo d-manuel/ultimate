@@ -17,7 +17,7 @@ NestedWordAutomaton nwa = (
 	returnAlphabet = {},
 	states = {q1 q2 q3 q4 q5 q6},
 	initialStates = {q1},
-	finalStates = {q6},
+	finalStates = {q4 q6},
 	callTransitions = {},
 	internalTransitions = {
     (q1 a q2)

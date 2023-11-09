@@ -327,6 +327,17 @@ public final class BoundedPetriNet<LETTER, PLACE> implements IPetriNet<LETTER, P
 		}
 		return mAcceptingPlaces.contains(place);
 	}
+	
+	/**
+	 * @param place
+	 * @return true if the supplied place is contained in the initial marking
+	 */
+	public boolean isInitial(final PLACE place) {
+		if (!mInitialPlaces.contains(place)) {
+			throw new IllegalArgumentException("unknown place " + place);
+		}
+		return mInitialPlaces.contains(place);
+	}
 
 	@Override
 	public String toString() {

@@ -95,7 +95,7 @@ import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
  		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
  		boolean executed = false;
-
+ 		
  		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()){
  			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection = 
  					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
