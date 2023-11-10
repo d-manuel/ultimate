@@ -72,8 +72,9 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
-	public BuchiIntersectGoalTrapped(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
+	public BuchiIntersectGoalTrapped(final AutomataLibraryServices services,
+			final IBlackWhiteStateFactory<PLACE> factory, final IPetriNet<LETTER, PLACE> petriNet,
+			final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
 		super(services);
 		mPetriNet = petriNet;
 		mBuchiAutomata = buchiAutomata;
@@ -85,11 +86,10 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
 		constructIntersection();
-		
+
 		mLogger.info(exitMessage());
 	}
-	
-	
+
 	private final void constructIntersection() {
 		addPlaces();
 		addTransitions();
@@ -155,7 +155,7 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		Stream<PLACE> places = petriTransition.getSuccessors().stream();
 		// check if petriTrans fires into accepting place (so the P_acceptnace
 		// condition).
-		boolean petriTransAccepting = places.anyMatch(place -> mPetriNet.getAcceptingPlaces().contains(place)); 
+		boolean petriTransAccepting = places.anyMatch(place -> mPetriNet.getAcceptingPlaces().contains(place));
 		LETTER label = petriTransition.getSymbol();
 
 		// successor is equal between both transitions because we do not need to
@@ -169,14 +169,14 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		Set<PLACE> predecessors2 = new HashSet<>(petriTransition.getPredecessors()); // F1
 		predecessors1.add(mInputQGetQ1.get(buchiPredecessor)); // F5 i=1
 		predecessors2.add(mInputQGetQ2.get(buchiPredecessor)); // F5 i=2
-		var trans_1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1),
-				ImmutableSet.of(successors));
+		var trans_1 =
+				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors));
 		mLogger.info("Added goal transition " + Utils.transitionToString(trans_1));
-		var trans_2 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2),
-				ImmutableSet.of(successors));
+		var trans_2 =
+				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2), ImmutableSet.of(successors));
 		mLogger.info("Added goal transition " + Utils.transitionToString(trans_2));
 	}
-	
+
 	@Override
 	public String startMessage() {
 		return "Starting Intersection with goal trap optimization";
@@ -192,36 +192,37 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		return mIntersectionNet;
 	}
 
-//	/**
-//	 *
-//	 */
-//	@SuppressWarnings("unchecked")
-//	@Override
-//	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
-//			throws AutomataLibraryException {
-//		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-//				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
-//		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-//				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
-//
-//		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
-//				mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
-//
-//		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
-//				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
-//		if (!isSubset.getResult()) {
-//			final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
-//			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-//			logger.error("Intersection recognizes incorrect word : " + ctx);
-//
-//		}
-//		final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
-//				(INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
-//		if (!isSuperset.getResult()) {
-//			final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
-//			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-//			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
-//		}
-//		return isSubset.getResult() && isSuperset.getResult();
-//	}
+	// /**
+	// *
+	// */
+	// @SuppressWarnings("unchecked")
+	// @Override
+	// public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
+	// throws AutomataLibraryException {
+	// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
+	// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
+	// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
+	// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
+	//
+	// final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new
+	// de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
+	// mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
+	//
+	// final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
+	// (INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
+	// if (!isSubset.getResult()) {
+	// final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
+	// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+	// logger.error("Intersection recognizes incorrect word : " + ctx);
+	//
+	// }
+	// final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
+	// (INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
+	// if (!isSuperset.getResult()) {
+	// final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
+	// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+	// logger.error("Intersection not recognizing word of correct intersection : " + ctx);
+	// }
+	// return isSubset.getResult() && isSuperset.getResult();
+	// }
 }

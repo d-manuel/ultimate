@@ -1,32 +1,32 @@
 package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
- /*
-  * Copyright (C) 2022-2023 Daniel Küchler (kuechlerdaniel33@gmail.com)
-  * Copyright (C) 2022-2023 University of Freiburg
-  * Copyright (C) 2023-2024 Manuel Dienert
-  * Copyright (C) 2023-2024 University of Freiburg
-  *
-  * This file is part of the ULTIMATE Automata Library.
-  *
-  * The ULTIMATE Automata Library is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU Lesser General Public License as published
-  * by the Free Software Foundation, either version 3 of the License, or
-  * (at your option) any later version.
-  *
-  * The ULTIMATE Automata Library is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU Lesser General Public License for more details.
-  *
-  * You should have received a copy of the GNU Lesser General Public License
-  * along with the ULTIMATE Automata Library. If not, see <http://www.gnu.org/licenses/>.
-  *
-  * Additional permission under GNU GPL version 3 section 7:
-  * If you modify the ULTIMATE Automata Library, or any covered work, by linking
-  * or combining it with Eclipse RCP (or a modified version of Eclipse RCP),
-  * containing parts covered by the terms of the Eclipse Public License, the
-  * licensors of the ULTIMATE Automata Library grant you additional permission
-  * to convey the resulting work.
-  */
+/*
+ * Copyright (C) 2022-2023 Daniel Küchler (kuechlerdaniel33@gmail.com)
+ * Copyright (C) 2022-2023 University of Freiburg
+ * Copyright (C) 2023-2024 Manuel Dienert
+ * Copyright (C) 2023-2024 University of Freiburg
+ *
+ * This file is part of the ULTIMATE Automata Library.
+ *
+ * The ULTIMATE Automata Library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * The ULTIMATE Automata Library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with the ULTIMATE Automata Library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Additional permission under GNU GPL version 3 section 7:
+ * If you modify the ULTIMATE Automata Library, or any covered work, by linking
+ * or combining it with Eclipse RCP (or a modified version of Eclipse RCP),
+ * containing parts covered by the terms of the Eclipse Public License, the
+ * licensors of the ULTIMATE Automata Library grant you additional permission
+ * to convey the resulting work.
+ */
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -57,189 +57,196 @@ import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2Finit
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
 import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
 
- /**
-  * Abstract class for the intersection of a  Büchi-Petri Net and a Büchi automaton.
-  *
-  * @param <LETTER>
-  * @param <PLACE>
-		*
-  * @author Daniel Küchler (kuechlerdaniel33@gmail.com)
-  * @author Manuel Dienert 
-  */
- public class BuchiIntersect<LETTER, PLACE>
- 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
- 	private final IPetriNet<LETTER, PLACE> mPetriNet;
- 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
- 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
- 	
- 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+/**
+ * Abstract class for the intersection of a Büchi-Petri Net and a Büchi automaton.
+ *
+ * @param <LETTER>
+ * @param <PLACE>
+ *
+ * @author Daniel Küchler (kuechlerdaniel33@gmail.com)
+ * @author Manuel Dienert
+ */
+public class BuchiIntersect<LETTER, PLACE>
+		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
+	private final IPetriNet<LETTER, PLACE> mPetriNet;
+	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
+	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
 
-// 	private boolean REMOVE_DEAD_OPTIMIZATION = false;
- 	private final boolean GOAL_TRAP_OPTIMIZATION = false;
- 	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION= false;
- 	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
- 	private final boolean SELF_LOOP_OPTIMIZATION = false;
- 	private final boolean WEAK_AUTOMATON_OPTIMIZATION = true; // includes inherently weak optimization
+	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
+	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
+	private final boolean GOAL_TRAP_OPTIMIZATION = false;
+	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
+	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
+	private final boolean SELF_LOOP_OPTIMIZATION = false;
+	private final boolean WEAK_AUTOMATON_OPTIMIZATION = true; // includes inherently weak optimization
 
- 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
- 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
- 		super(services);
- 		mPetriNet = petriNet;
- 		mBuchiAutomaton = buchiAutomata;
- 		mLogger.info(startMessage());
- 		if (buchiAutomata.getInitialStates().size() != 1) {
- 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
- 		}
- 		mLabeledBuchiPlaceFactory = factory;
- 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
+	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
+		super(services);
+		mPetriNet = petriNet;
+		mBuchiAutomaton = buchiAutomata;
+		mLogger.info(startMessage());
+		if (buchiAutomata.getInitialStates().size() != 1) {
+			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
+		}
+		mLabeledBuchiPlaceFactory = factory;
+		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
- 		boolean executed = false;
- 		
- 		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()){
- 			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection = 
- 					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
- 			// TODO why type casting here necessary?
- 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 			executed = true;
- 		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
- 			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection = 
- 					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
- 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 			executed = true;
- 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
- 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection = 
- 					new BuchiIntersectAllAcceptingtNet<>(services, petriNet, buchiAutomata);
- 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 			executed = true;
-// 		} else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(services,mBuchiAutomata)) {
- 		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
- 			// we need a NestedWordAutomatonReachableStates for this
- 			try {
- 				NestedWordAutomatonReachableStates<LETTER,PLACE> buchiAutomatonReachable =  
- 						new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
+		boolean executed = false;
 
- 				BuchiWeakComp<LETTER, PLACE> buchiWeakComp = new BuchiWeakComp<>(services, factory, petriNet, buchiAutomatonReachable);
+		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
+			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection =
+					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
+			// TODO why type casting here necessary?
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			executed = true;
+		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
+			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
+					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			executed = true;
+		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
+			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
+					new BuchiIntersectAllAcceptingtNet<>(services, petriNet, buchiAutomata);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			executed = true;
+			// } else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(services,mBuchiAutomata)) {
+		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
+			// we need a NestedWordAutomatonReachableStates for this
+			try {
+				NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
+						new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
 
- 				if (buchiWeakComp.isWeak()) {
- 					final BuchiIntersectWeakAutomaton<LETTER, PLACE> intersection = 
- 							new BuchiIntersectWeakAutomaton<LETTER,PLACE>(services, mLabeledBuchiPlaceFactory, petriNet, buchiAutomata,
- 									buchiWeakComp.getResult());
+				BuchiWeakComp<LETTER, PLACE> buchiWeakComp =
+						new BuchiWeakComp<>(services, factory, petriNet, buchiAutomatonReachable);
 
- 					mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 					executed = true;
- 				}
+				if (buchiWeakComp.isWeak()) {
+					final BuchiIntersectWeakAutomaton<LETTER, PLACE> intersection =
+							new BuchiIntersectWeakAutomaton<LETTER, PLACE>(services, mLabeledBuchiPlaceFactory,
+									petriNet, buchiAutomata, buchiWeakComp.getResult());
 
- 			} catch (AutomataOperationCanceledException e) {
- 				executed = false;
- 				e.printStackTrace();
- 			}
- 		} else if (SELF_LOOP_OPTIMIZATION) {
- 			final BuchiIntersectDefault<LETTER, PLACE> intersection = 
- 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
- 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 		} 
- 		if (!executed) {
- 			final BuchiIntersectDefault<LETTER, PLACE> intersection = 
- 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, false);
- 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
- 		}
+					mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+					executed = true;
+				}
 
- 		mLogger.info(exitMessage());
- 	}
- 	// -------------------------------------------
- 	public static <LETTER,PLACE> boolean isAllGoalAutomaton(INestedWordAutomaton<LETTER,PLACE> buchiAutomaton) {
- 		Stream<PLACE> states = buchiAutomaton.getStates().stream();
- 		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
- 	}
- 	public static <LETTER,PLACE> boolean isAllAcceptingNet(IPetriNet<LETTER, PLACE> petriNet) { 
- 		Stream<PLACE> places = petriNet.getPlaces().stream();
- 		return places.allMatch(place -> petriNet.isAccepting(place));
- 	}
- 	public boolean isGoalTrapped() {
- 		for (var x  : mBuchiAutomaton.getFinalStates()) {
- 			for (var y : mBuchiAutomaton.internalSuccessors(x)) {
- 				if (!mBuchiAutomaton.getFinalStates().contains(y.getSucc())) {
- 					return false;
- 				}
- 			}
- 		}
- 		return true;
- 	}
+			} catch (AutomataOperationCanceledException e) {
+				executed = false;
+				e.printStackTrace();
+			}
+		} else if (SELF_LOOP_OPTIMIZATION) {
+			final BuchiIntersectDefault<LETTER, PLACE> intersection =
+					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+		}
+		if (!executed) {
+			final BuchiIntersectDefault<LETTER, PLACE> intersection =
+					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, false);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+		}
 
- 	public static <LETTER,PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services, 
- 			INestedWordAutomaton<LETTER,PLACE> buchiAutomaton) {
- 		try {
- 			NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =  
- 					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
- 			AutomatonSccComputation<LETTER, PLACE> sccComp =  
- 					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting, mBuchiAutomatonAccepting.getStates(), 
- 							mBuchiAutomatonAccepting.getStates());
- 			//			Collection<StronglyConnectedComponent<PLACE>> sccs =  sccComp.getBalls();
- 			Stream<StronglyConnectedComponent<PLACE>> sccsStream =  sccComp.getBalls().stream();
- 			Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
- 			sccsStream.forEach(sccs::add);
- 			for (var scc : sccs) {
- 				boolean isAcceptingSCC = 
- 						scc.getNodes().stream().allMatch(node -> mBuchiAutomatonAccepting.getFinalStates().contains(node));
- 				boolean isNonAcceptingScc = 
- 						scc.getNodes().stream().allMatch(node -> !mBuchiAutomatonAccepting.getFinalStates().contains(node));
- 				if (!isAcceptingSCC && !isNonAcceptingScc) {// accepting SCC has nonaccepting cycle or nonaccepting SCC has an accepting state.
- 					return false;
- 				}
- 			}
- 		} catch (AutomataOperationCanceledException e) {
- 			e.printStackTrace();
- 			return false;
- 		}
- 		return true;
- 	}
+		mLogger.info(exitMessage());
+	}
 
- 	@Override
- 	public String startMessage() {
- 		return "Starting Intersection";
- 	}
+	// -------------------------------------------
+	public static <LETTER, PLACE> boolean isAllGoalAutomaton(INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+		Stream<PLACE> states = buchiAutomaton.getStates().stream();
+		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
+	}
 
- 	@Override
- 	public String exitMessage() {
- 		return "Exiting Intersection";
- 	}
+	public static <LETTER, PLACE> boolean isAllAcceptingNet(IPetriNet<LETTER, PLACE> petriNet) {
+		Stream<PLACE> places = petriNet.getPlaces().stream();
+		return places.allMatch(place -> petriNet.isAccepting(place));
+	}
 
- 	@Override
- 	public IPetriNet<LETTER, PLACE> getResult() {
- 		return mIntersectionNet;
- 	}
+	public boolean isGoalTrapped() {
+		for (var x : mBuchiAutomaton.getFinalStates()) {
+			for (var y : mBuchiAutomaton.internalSuccessors(x)) {
+				if (!mBuchiAutomaton.getFinalStates().contains(y.getSucc())) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
 
- 	/**
- 	 *
- 	 */
- 	@SuppressWarnings("unchecked")
- 	@Override
- 	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
- 			throws AutomataLibraryException {
- 		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
- 				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
- 		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
- 				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
+	public static <LETTER, PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services,
+			INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+		try {
+			NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
+					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
+			AutomatonSccComputation<LETTER, PLACE> sccComp =
+					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting,
+							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
+			// Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
+			Stream<StronglyConnectedComponent<PLACE>> sccsStream = sccComp.getBalls().stream();
+			Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
+			sccsStream.forEach(sccs::add);
+			for (var scc : sccs) {
+				boolean isAcceptingSCC = scc.getNodes().stream()
+						.allMatch(node -> mBuchiAutomatonAccepting.getFinalStates().contains(node));
+				boolean isNonAcceptingScc = scc.getNodes().stream()
+						.allMatch(node -> !mBuchiAutomatonAccepting.getFinalStates().contains(node));
+				if (!isAcceptingSCC && !isNonAcceptingScc) {// accepting SCC has nonaccepting cycle or nonaccepting SCC
+															// has an accepting state.
+					return false;
+				}
+			}
+		} catch (AutomataOperationCanceledException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
 
- 		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
- 				mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomaton).getResult();
+	@Override
+	public String startMessage() {
+		return "Starting Intersection";
+	}
 
- 		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
- 				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
- 		if (!isSubset.getResult()) {
- 			final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
- 			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
- 			logger.error("Intersection recognizes incorrect word : " + ctx);
+	@Override
+	public String exitMessage() {
+		return "Exiting Intersection";
+	}
 
- 		}
- 		final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
- 				(INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
- 		if (!isSuperset.getResult()) {
- 			final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
- 			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
- 			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
- 		}
- 		return isSubset.getResult() && isSuperset.getResult();
- 	}
- }
+	@Override
+	public IPetriNet<LETTER, PLACE> getResult() {
+		return mIntersectionNet;
+	}
+
+	/**
+	 *
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
+			throws AutomataLibraryException {
+		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa =
+				(new BuchiPetriNet2FiniteAutomaton<>(mServices, stateFactory,
+						(IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
+		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa =
+				(new BuchiPetriNet2FiniteAutomaton<>(mServices, stateFactory,
+						(IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
+
+		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection =
+				new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(mServices,
+						(IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomaton).getResult();
+
+		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
+				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
+		if (!isSubset.getResult()) {
+			final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
+			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+			logger.error("Intersection recognizes incorrect word : " + ctx);
+
+		}
+		final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
+				(INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
+		if (!isSuperset.getResult()) {
+			final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
+			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
+		}
+		return isSubset.getResult() && isSuperset.getResult();
+	}
+}

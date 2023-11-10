@@ -77,7 +77,7 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
-	
+
 	private Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
 
 	/**
@@ -87,32 +87,33 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 	 * @param factory
 	 * @param petriNet
 	 * @param buchiAutomaton
-	 * 		An weak automaton
+	 *            An weak automaton
 	 * @param acceptingSccPlaces
-	 * 		All accepting places. 
-	 * 		TODO for now how the accepting places are in the buchiAutomaton parameter is ignored!!
+	 *            All accepting places. TODO for now how the accepting places are in the buchiAutomaton parameter is
+	 *            ignored!!
 	 */
-	public BuchiIntersectWeakAutomaton(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, INestedWordAutomaton<LETTER, PLACE> buchiAutomaton,  Set<PLACE> acceptingSccPlaces) {
+	public BuchiIntersectWeakAutomaton(final AutomataLibraryServices services,
+			final IBlackWhiteStateFactory<PLACE> factory, final IPetriNet<LETTER, PLACE> petriNet,
+			INestedWordAutomaton<LETTER, PLACE> buchiAutomaton, Set<PLACE> acceptingSccPlaces) {
 		super(services);
 		mPetriNet = petriNet;
-//		mBuchiAutomata = buchiAutomata;
+		// mBuchiAutomata = buchiAutomata;
 		mLogger.info(startMessage());
 		if (buchiAutomaton.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
-		
+
 		mBuchiAutomaton = buchiAutomaton;
-		
+
 		mAcceptingSccPlaces = acceptingSccPlaces;
-		
+
 		constructIntersection();
-		
+
 		mLogger.info(exitMessage());
 	}
-	
+
 	private final void constructIntersection() {
 		addPlaces();
 		addTransitions();
@@ -159,7 +160,7 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 			}
 		}
 	}
-	
+
 	private final void syncToStemTransition(final Transition<LETTER, PLACE> petriTransition,
 			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final PLACE buchiPredecessor) {
 		LETTER label = petriTransition.getSymbol();
@@ -192,26 +193,26 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 		// consider the acceptance
 		// condition of the Büchi automaton
 		// but we need to go to only one places if the successor is nonaccepting.
-		
+
 		// we can only go to the qi2 if we go to an accepting state in q_i
-		//TODO improve
+		// TODO improve
 		boolean buchiSuccAccepting = mBuchiAutomaton.getFinalStates().contains(buchiTransition.getSucc());
 		Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors()); // F2
-		successors.add((petriTransAccepting&& buchiSuccAccepting) ? mInputQGetQ2.get(buchiTransition.getSucc())
+		successors.add((petriTransAccepting && buchiSuccAccepting) ? mInputQGetQ2.get(buchiTransition.getSucc())
 				: mInputQGetQ1.get(buchiTransition.getSucc())); // F6 or F7
-		
+
 		Set<PLACE> predecessors1 = new HashSet<>(petriTransition.getPredecessors()); // F1
 		Set<PLACE> predecessors2 = new HashSet<>(petriTransition.getPredecessors()); // F1
 		predecessors1.add(mInputQGetQ1.get(buchiPredecessor)); // F5 i=1
 		predecessors2.add(mInputQGetQ2.get(buchiPredecessor)); // F5 i=2
-		var trans_1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1),
-				ImmutableSet.of(successors));
+		var trans_1 =
+				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors));
 		mLogger.info("Added goal transition " + Utils.transitionToString(trans_1));
-		var trans_2 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2),
-				ImmutableSet.of(successors));
+		var trans_2 =
+				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2), ImmutableSet.of(successors));
 		mLogger.info("Added goal transition " + Utils.transitionToString(trans_2));
 	}
-	
+
 	@Override
 	public String startMessage() {
 		return "Starting Intersection with goal trap optimization";
@@ -227,36 +228,39 @@ public class BuchiIntersectWeakAutomaton<LETTER, PLACE>
 		return mIntersectionNet;
 	}
 
-////	/**
-////	 *
-////	 */
-////	@SuppressWarnings("unchecked")
-////	@Override
-////	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
-////			throws AutomataLibraryException {
-////		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-////				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
-////		final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-////				mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
-////
-////		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
-////				mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
-////
-////		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
-////				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
-////		if (!isSubset.getResult()) {
-////			final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
-////			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-////			logger.error("Intersection recognizes incorrect word : " + ctx);
-////
-////		}
-////		final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
-////				(INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
-////		if (!isSuperset.getResult()) {
-////			final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
-////			final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-////			logger.error("Intersection not recognizing word of correct intersection : " + ctx);
-////		}
-////		return isSubset.getResult() && isSuperset.getResult();
-////	}
+	//// /**
+	//// *
+	//// */
+	//// @SuppressWarnings("unchecked")
+	//// @Override
+	//// public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
+	//// throws AutomataLibraryException {
+	//// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new
+	//// BuchiPetriNet2FiniteAutomaton<>(
+	//// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
+	//// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new
+	//// BuchiPetriNet2FiniteAutomaton<>(
+	//// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
+	////
+	//// final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new
+	//// de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
+	//// mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
+	////
+	//// final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
+	//// (INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
+	//// if (!isSubset.getResult()) {
+	//// final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
+	//// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+	//// logger.error("Intersection recognizes incorrect word : " + ctx);
+	////
+	//// }
+	//// final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
+	//// (INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
+	//// if (!isSuperset.getResult()) {
+	//// final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
+	//// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
+	//// logger.error("Intersection not recognizing word of correct intersection : " + ctx);
+	//// }
+	//// return isSubset.getResult() && isSuperset.getResult();
+	//// }
 }
