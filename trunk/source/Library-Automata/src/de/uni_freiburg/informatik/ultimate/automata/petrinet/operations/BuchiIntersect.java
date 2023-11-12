@@ -28,10 +28,7 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  * to convey the resulting work.
  */
 
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -79,7 +76,8 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
 	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
 	private final boolean SELF_LOOP_OPTIMIZATION = false;
-	private final boolean WEAK_AUTOMATON_OPTIMIZATION = true; // includes inherently weak optimization
+	private final boolean WEAK_AUTOMATON_OPTIMIZATION = false; // includes inherently weak optimization
+	private final boolean STEM_OPTIMIZATION = true;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -115,10 +113,10 @@ public class BuchiIntersect<LETTER, PLACE>
 		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
 			// we need a NestedWordAutomatonReachableStates for this
 			try {
-				NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
+				final NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
 						new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
 
-				BuchiWeakComp<LETTER, PLACE> buchiWeakComp =
+				final BuchiWeakComp<LETTER, PLACE> buchiWeakComp =
 						new BuchiWeakComp<>(services, factory, petriNet, buchiAutomatonReachable);
 
 				if (buchiWeakComp.isWeak()) {
@@ -130,7 +128,7 @@ public class BuchiIntersect<LETTER, PLACE>
 					executed = true;
 				}
 
-			} catch (AutomataOperationCanceledException e) {
+			} catch (final AutomataOperationCanceledException e) {
 				executed = false;
 				e.printStackTrace();
 			}
@@ -138,6 +136,9 @@ public class BuchiIntersect<LETTER, PLACE>
 			final BuchiIntersectDefault<LETTER, PLACE> intersection =
 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+		}
+		if (STEM_OPTIMIZATION) {
+
 		}
 		if (!executed) {
 			final BuchiIntersectDefault<LETTER, PLACE> intersection =
@@ -149,19 +150,19 @@ public class BuchiIntersect<LETTER, PLACE>
 	}
 
 	// -------------------------------------------
-	public static <LETTER, PLACE> boolean isAllGoalAutomaton(INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
-		Stream<PLACE> states = buchiAutomaton.getStates().stream();
+	public static <LETTER, PLACE> boolean isAllGoalAutomaton(final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+		final Stream<PLACE> states = buchiAutomaton.getStates().stream();
 		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
 	}
 
-	public static <LETTER, PLACE> boolean isAllAcceptingNet(IPetriNet<LETTER, PLACE> petriNet) {
-		Stream<PLACE> places = petriNet.getPlaces().stream();
+	public static <LETTER, PLACE> boolean isAllAcceptingNet(final IPetriNet<LETTER, PLACE> petriNet) {
+		final Stream<PLACE> places = petriNet.getPlaces().stream();
 		return places.allMatch(place -> petriNet.isAccepting(place));
 	}
 
 	public boolean isGoalTrapped() {
-		for (var x : mBuchiAutomaton.getFinalStates()) {
-			for (var y : mBuchiAutomaton.internalSuccessors(x)) {
+		for (final var x : mBuchiAutomaton.getFinalStates()) {
+			for (final var y : mBuchiAutomaton.internalSuccessors(x)) {
 				if (!mBuchiAutomaton.getFinalStates().contains(y.getSucc())) {
 					return false;
 				}
@@ -171,28 +172,28 @@ public class BuchiIntersect<LETTER, PLACE>
 	}
 
 	public static <LETTER, PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services,
-			INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
 		try {
-			NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
+			final NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
 					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
-			AutomatonSccComputation<LETTER, PLACE> sccComp =
+			final AutomatonSccComputation<LETTER, PLACE> sccComp =
 					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting,
 							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
 			// Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
-			Stream<StronglyConnectedComponent<PLACE>> sccsStream = sccComp.getBalls().stream();
-			Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
+			final Stream<StronglyConnectedComponent<PLACE>> sccsStream = sccComp.getBalls().stream();
+			final Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
 			sccsStream.forEach(sccs::add);
-			for (var scc : sccs) {
-				boolean isAcceptingSCC = scc.getNodes().stream()
+			for (final var scc : sccs) {
+				final boolean isAcceptingSCC = scc.getNodes().stream()
 						.allMatch(node -> mBuchiAutomatonAccepting.getFinalStates().contains(node));
-				boolean isNonAcceptingScc = scc.getNodes().stream()
+				final boolean isNonAcceptingScc = scc.getNodes().stream()
 						.allMatch(node -> !mBuchiAutomatonAccepting.getFinalStates().contains(node));
 				if (!isAcceptingSCC && !isNonAcceptingScc) {// accepting SCC has nonaccepting cycle or nonaccepting SCC
 															// has an accepting state.
 					return false;
 				}
 			}
-		} catch (AutomataOperationCanceledException e) {
+		} catch (final AutomataOperationCanceledException e) {
 			e.printStackTrace();
 			return false;
 		}
