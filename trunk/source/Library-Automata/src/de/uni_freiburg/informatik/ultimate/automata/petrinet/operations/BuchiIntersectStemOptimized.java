@@ -172,14 +172,15 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 		final LETTER label = petriTransition.getSymbol();
 		final boolean petriSuccAccepting = petriTransition.getSuccessors().stream().anyMatch(mPetriNet::isAccepting);
-		final boolean buchiPredAccepting = mBuchiAutomaton.isFinal(buchiPredecessor);
+		final boolean buchiPredAccepting = mBuchiAutomaton.isFinal(buchiPredecessor);// TODO actually unnecessary
+		final boolean buchiSuccInScc = mAcceptingSccPlaces.contains(buchiTransition.getSucc());
 
 		// Transiton 1 index 1 to X
 		final Set<PLACE> predecessors1 = new HashSet<>(petriTransition.getPredecessors()); // TODO is it adding petri
 																							// succs
 		predecessors1.add(mInputQGetQ1.get(buchiPredecessor));
 		final Set<PLACE> successors1 = new HashSet<>(petriTransition.getSuccessors());
-		successors1.add((petriSuccAccepting) ? mInputQGetQ2.get(buchiTransition.getSucc())
+		successors1.add((petriSuccAccepting && buchiSuccInScc) ? mInputQGetQ2.get(buchiTransition.getSucc())
 				: mInputQGetQ1.get(buchiTransition.getSucc()));
 
 		// Transition 2 index 2 to Y
