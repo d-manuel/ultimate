@@ -80,7 +80,7 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final boolean STEM_OPTIMIZATION = true;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) throws AutomataOperationCanceledException {
 		super(services);
 		mPetriNet = petriNet;
 		mBuchiAutomaton = buchiAutomata;
@@ -136,10 +136,14 @@ public class BuchiIntersect<LETTER, PLACE>
 			final BuchiIntersectDefault<LETTER, PLACE> intersection =
 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			executed = true;
 		}
 		if (STEM_OPTIMIZATION) {
-
-		}
+			final BuchiIntersectStemOptimized<LETTER, PLACE> intersection = 
+					new BuchiIntersectStemOptimized<>(services, factory, (BoundedPetriNet<LETTER, PLACE>) mPetriNet, buchiAutomata);
+				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			executed = true;
+	}
 		if (!executed) {
 			final BuchiIntersectDefault<LETTER, PLACE> intersection =
 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, false);
