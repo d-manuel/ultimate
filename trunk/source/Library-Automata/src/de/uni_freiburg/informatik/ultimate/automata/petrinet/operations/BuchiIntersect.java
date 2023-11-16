@@ -65,22 +65,24 @@ import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
  */
 public class BuchiIntersect<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
+
+	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
+	private static final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
+	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
+	private static final boolean STEM_OPTIMIZATION = false;
+	private static final boolean SELF_LOOP_OPTIMIZATION = false;
+	private static final boolean WEAK_AUTOMATON_OPTIMIZATION = false;
+	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
+
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
-	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
-	private final boolean GOAL_TRAP_OPTIMIZATION = false;
-	private final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
-	private final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
-	private final boolean SELF_LOOP_OPTIMIZATION = false;
-	private final boolean WEAK_AUTOMATON_OPTIMIZATION = false; // includes inherently weak optimization
-	private final boolean STEM_OPTIMIZATION = true;
-
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) throws AutomataOperationCanceledException {
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata)
+			throws AutomataOperationCanceledException {
 		super(services);
 		mPetriNet = petriNet;
 		mBuchiAutomaton = buchiAutomata;
@@ -139,11 +141,11 @@ public class BuchiIntersect<LETTER, PLACE>
 			executed = true;
 		}
 		if (STEM_OPTIMIZATION) {
-			final BuchiIntersectStemOptimized<LETTER, PLACE> intersection = 
-					new BuchiIntersectStemOptimized<>(services, factory, (BoundedPetriNet<LETTER, PLACE>) mPetriNet, buchiAutomata);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			final BuchiIntersectStemOptimized<LETTER, PLACE> intersection = new BuchiIntersectStemOptimized<>(services,
+					factory, (BoundedPetriNet<LETTER, PLACE>) mPetriNet, buchiAutomata);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 			executed = true;
-	}
+		}
 		if (!executed) {
 			final BuchiIntersectDefault<LETTER, PLACE> intersection =
 					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, false);
