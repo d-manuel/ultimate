@@ -144,31 +144,38 @@ public class PetriNetUnfolderBuchi<LETTER, PLACE>
 				if (!event2.isCompanion()) {
 					// adding events we pass through, because they will build the lasso-word.
 					newList.add(0, event2);
-					continue;
-				}
-				nextPair.getFirst().add(newList);
-				if (event2.getCutoffEventsThisIsCompanionTo().contains(event)) {
-					Collections.reverse(nextPair.getFirst());
-					final List<Event<LETTER, PLACE>> configLoopEvents =
-							nextPair.getFirst().stream().flatMap(List::stream).collect(Collectors.toList());
-					final List<Event<LETTER, PLACE>> configStemEvents =
-							event.getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
 
-					if (checkIfLassoConfigurationAccepted(configLoopEvents, configStemEvents)) {
-						return true;
-					}
-				}
-				// New backtrack-tree-path found through another companion event. We don't add event2 to the
-				// list of events because it is not part of the word.
-				for (final Event<LETTER, PLACE> cutoffEvent : event2.getCutoffEventsThisIsCompanionTo()) {
-					if (!seenEvents.add(cutoffEvent)) {
-						// to avoid looping
-						continue;
-					}
-					wordBeingBuilt.add(new Pair<>(new ArrayList<>(nextPair.getFirst()), cutoffEvent));
-				}
-				break;
+				} else {
+					// event is companion event
+					nextPair.getFirst().add(newList);
 
+					// Done Found lasso word. Ringschluss erfolgt.
+					if (event2.getCutoffEventsThisIsCompanionTo().contains(event)) {
+						Collections.reverse(nextPair.getFirst());
+						final List<Event<LETTER, PLACE>> configLoopEvents =
+								nextPair.getFirst().stream().flatMap(List::stream).collect(Collectors.toList());
+						final List<Event<LETTER, PLACE>> configStemEvents =
+								event.getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
+
+						if (checkIfLassoConfigurationAccepted(configLoopEvents, configStemEvents)) {
+							return true;
+						}
+					}
+					// Need to continue to find for a loop (Ringschluss).
+
+					// New backtrack-tree-path found through another companion event. We don't add event2 to the
+					// list of events because it is not part of the word.
+					for (final Event<LETTER, PLACE> cutoffEvent : event2.getCutoffEventsThisIsCompanionTo()) {
+						if (!seenEvents.add(cutoffEvent)) {
+							// to avoid looping
+							continue;
+						}
+						wordBeingBuilt.add(new Pair<>(new ArrayList<>(nextPair.getFirst()), cutoffEvent));
+					}
+					// ensure we do not consider events in the local configuration of a companion event:
+					break;
+
+				}
 			}
 		}
 		return false;
