@@ -52,7 +52,7 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
 
-	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersectAllAcceptingtNet(final AutomataLibraryServices services,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
@@ -95,19 +95,19 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 
 	private final void addTransitions() {
 		for (final Transition<LETTER, PLACE> petriTransition : mPetriNet.getTransitions()) {
-			LETTER label = petriTransition.getSymbol();
+			final LETTER label = petriTransition.getSymbol();
 			for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
 				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomata
 						.internalSuccessors(buchiPlace, label)) {
 
-					Set<PLACE> predecessors = new HashSet<>(petriTransition.getPredecessors());
+					final Set<PLACE> predecessors = new HashSet<>(petriTransition.getPredecessors());
 					predecessors.add(buchiPlace);
-					Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors());
+					final Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors());
 					successors.add(buchiTransition.getSucc());
 
-					var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
+					final var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
 							ImmutableSet.of(successors));
-					mLogger.info("Added transition " + Utils.transitionToString(trans1));
+					mLogger.debug("Added transition " + Utils.transitionToString(trans1));
 				}
 			}
 		}
@@ -115,12 +115,12 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 
 	@Override
 	public String startMessage() {
-		return "Starting Intersection with all goal automaton";
+		return "Starting Intersection with all accepting Petri Net";
 	}
 
 	@Override
 	public String exitMessage() {
-		return "Exiting Intersection with all goal automaton";
+		return "Exiting Intersection with all accepting Petri Net";
 	}
 
 	@Override

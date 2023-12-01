@@ -68,6 +68,8 @@ import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
 public class Cfg2Automaton<LETTER extends IIcfgTransition<?>> {
 	private static final boolean DEBUG_STORE_HISTORY = false;
+	// make the thread(Not)InUsePredicate accepting.
+	private static final boolean THREAD_PREDICATE_ACCEPTING = true;
 
 	private Cfg2Automaton() {
 		// do not instantiate
@@ -390,7 +392,7 @@ public class Cfg2Automaton<LETTER extends IIcfgTransition<?>> {
 			final BoundedPetriNet<LETTER, IPredicate> net, final PredicateFactory predicateFactory) {
 		final String threadNotInUseString = threadInstanceId + "NotInUse";
 		final IPredicate threadNotInUsePredicate = predicateFactory.newDebugPredicate(threadNotInUseString);
-		net.addPlace(threadNotInUsePredicate, true, false);
+		net.addPlace(threadNotInUsePredicate, true, THREAD_PREDICATE_ACCEPTING);
 		return threadNotInUsePredicate;
 	}
 
@@ -398,7 +400,7 @@ public class Cfg2Automaton<LETTER extends IIcfgTransition<?>> {
 			final BoundedPetriNet<LETTER, IPredicate> net, final PredicateFactory predicateFactory) {
 		final String threadInUseString = threadInstanceId + "InUse";
 		final IPredicate threadInUsePredicate = predicateFactory.newDebugPredicate(threadInUseString);
-		net.addPlace(threadInUsePredicate, false, false);
+		net.addPlace(threadInUsePredicate, false, THREAD_PREDICATE_ACCEPTING);
 		return threadInUsePredicate;
 	}
 

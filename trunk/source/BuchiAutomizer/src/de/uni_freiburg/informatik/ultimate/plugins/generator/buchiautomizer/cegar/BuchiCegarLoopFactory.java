@@ -122,7 +122,8 @@ public class BuchiCegarLoopFactory<L extends IIcfgTransition<?>> {
 					stateFactoryForRefinement, automatonProvider);
 		case BUCHI_PETRI_NET:
 			return new BuchiPetriNetCegarLoop<>(icfg, rankVarConstructor, predicateFactory, mPrefs, mServices,
-					mTransitionClazz, constructInitialAbstraction(petriNetProvider, icfg), mCegarLoopBenchmark);
+					mTransitionClazz, constructInitialAbstraction(petriNetProvider, icfg), stateFactoryForRefinement,
+					mCegarLoopBenchmark);
 		// case RABIN_PETRI_NET:
 		// return new RabinPetriNetCegarLoop<>(icfg, rankVarConstructor, predicateFactory, mPrefs, mServices,
 		// mTransitionClazz, new RabinPetriNetWrapper<>(constructInitialAbstraction(petriNetProvider, icfg)),
