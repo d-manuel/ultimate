@@ -69,7 +69,7 @@ public class BuchiIntersect<LETTER, PLACE>
 	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
 	private static final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
 	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
-	private static final boolean STEM_OPTIMIZATION = false;
+	private static final boolean STEM_OPTIMIZATION = true;
 	private static final boolean SELF_LOOP_OPTIMIZATION = false;
 	private static final boolean WEAK_AUTOMATON_OPTIMIZATION = false;
 	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
@@ -77,6 +77,7 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
+	private final AutomataLibraryServices mServices;
 
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
@@ -86,6 +87,7 @@ public class BuchiIntersect<LETTER, PLACE>
 		super(services);
 		mPetriNet = petriNet;
 		mBuchiAutomaton = buchiAutomata;
+		mServices = services;
 		mLogger.info(startMessage());
 		if (buchiAutomata.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
@@ -93,25 +95,30 @@ public class BuchiIntersect<LETTER, PLACE>
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
 
-		boolean executed = false;
+		executeIntersection();
 
+		mLogger.info(exitMessage());
+	}
+
+	// execute
+	private void executeIntersection() throws AutomataOperationCanceledException {
 		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
 			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection =
 					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
-			// TODO why type casting here necessary?
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			executed = true;
+			return;
 		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
 			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
-					new BuchiIntersectAllGoalAutomaton<>(services, petriNet, buchiAutomata);
+					new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			executed = true;
+			return;
 		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
+			mLogger.error("executed all accepting optimization");
 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
-					new BuchiIntersectAllAcceptingtNet<>(services, petriNet, buchiAutomata);
+					new BuchiIntersectAllAcceptingtNet<>(mServices, mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			executed = true;
-			// } else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(services,mBuchiAutomata)) {
+			return;
+			// } else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(mServices,mBuchiAutomata)) {
 		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
 			// we need a NestedWordAutomatonReachableStates for this
 			try {
@@ -119,40 +126,36 @@ public class BuchiIntersect<LETTER, PLACE>
 						new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
 
 				final BuchiWeakComp<LETTER, PLACE> buchiWeakComp =
-						new BuchiWeakComp<>(services, factory, petriNet, buchiAutomatonReachable);
+						new BuchiWeakComp<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, buchiAutomatonReachable);
 
 				if (buchiWeakComp.isWeak()) {
 					final BuchiIntersectWeakAutomaton<LETTER, PLACE> intersection =
-							new BuchiIntersectWeakAutomaton<LETTER, PLACE>(services, mLabeledBuchiPlaceFactory,
-									petriNet, buchiAutomata, buchiWeakComp.getResult());
+							new BuchiIntersectWeakAutomaton<LETTER, PLACE>(mServices, mLabeledBuchiPlaceFactory,
+									mPetriNet, mBuchiAutomaton, buchiWeakComp.getResult());
 
 					mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-					executed = true;
+					return;
 				}
 
 			} catch (final AutomataOperationCanceledException e) {
-				executed = false;
 				e.printStackTrace();
+				return;
 			}
 		} else if (SELF_LOOP_OPTIMIZATION) {
-			final BuchiIntersectDefault<LETTER, PLACE> intersection =
-					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, SELF_LOOP_OPTIMIZATION);
+			final BuchiIntersectDefault<LETTER, PLACE> intersection = new BuchiIntersectDefault<>(mServices,
+					mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, SELF_LOOP_OPTIMIZATION);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			executed = true;
+			return;
 		}
 		if (STEM_OPTIMIZATION) {
-			final BuchiIntersectStemOptimized<LETTER, PLACE> intersection = new BuchiIntersectStemOptimized<>(services,
-					factory, (BoundedPetriNet<LETTER, PLACE>) mPetriNet, buchiAutomata);
+			final BuchiIntersectStemOptimized<LETTER, PLACE> intersection = new BuchiIntersectStemOptimized<>(mServices,
+					mLabeledBuchiPlaceFactory, (BoundedPetriNet<LETTER, PLACE>) mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			executed = true;
+			return;
 		}
-		if (!executed) {
-			final BuchiIntersectDefault<LETTER, PLACE> intersection =
-					new BuchiIntersectDefault<>(services, factory, petriNet, buchiAutomata, false);
-			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-		}
-
-		mLogger.info(exitMessage());
+		final BuchiIntersectDefault<LETTER, PLACE> intersection =
+				new BuchiIntersectDefault<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, false);
+		mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 	}
 
 	// -------------------------------------------
