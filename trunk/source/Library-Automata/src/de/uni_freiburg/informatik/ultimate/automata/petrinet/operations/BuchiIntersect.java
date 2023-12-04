@@ -48,6 +48,7 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.N
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
@@ -100,26 +101,29 @@ public class BuchiIntersect<LETTER, PLACE>
 		mLogger.info(exitMessage());
 	}
 
-	// execute
+	@SuppressWarnings("unused")
 	private void executeIntersection() throws AutomataOperationCanceledException {
-		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
-			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection =
-					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
-			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			return;
-		} else if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
-			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
-					new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
-			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-			return;
-		} else if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
-			mLogger.error("executed all accepting optimization");
+		if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
 					new BuchiIntersectAllAcceptingtNet<>(mServices, mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 			return;
 			// } else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(mServices,mBuchiAutomata)) {
 		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
+		}
+		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
+			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection =
+					new BuchiIntersectGoalTrapped<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			return;
+		}
+		if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
+			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
+					new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			return;
+		}
+		if (WEAK_AUTOMATON_OPTIMIZATION) {
 			// we need a NestedWordAutomatonReachableStates for this
 			try {
 				final NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
@@ -142,6 +146,8 @@ public class BuchiIntersect<LETTER, PLACE>
 				return;
 			}
 		} else if (SELF_LOOP_OPTIMIZATION) {
+		}
+		if (SELF_LOOP_OPTIMIZATION) {
 			final BuchiIntersectDefault<LETTER, PLACE> intersection = new BuchiIntersectDefault<>(mServices,
 					mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, SELF_LOOP_OPTIMIZATION);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
@@ -159,14 +165,15 @@ public class BuchiIntersect<LETTER, PLACE>
 	}
 
 	// -------------------------------------------
+
 	public static <LETTER, PLACE> boolean isAllGoalAutomaton(final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
 		final Stream<PLACE> states = buchiAutomaton.getStates().stream();
 		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
 	}
 
 	public static <LETTER, PLACE> boolean isAllAcceptingNet(final IPetriNet<LETTER, PLACE> petriNet) {
-		final Stream<PLACE> places = petriNet.getPlaces().stream();
-		return places.allMatch(place -> petriNet.isAccepting(place));
+		final Stream<Transition<LETTER, PLACE>> transitions = petriNet.getTransitions().stream();
+		return transitions.allMatch(trans -> trans.getSuccessors().stream().anyMatch(petriNet::isAccepting));
 	}
 
 	public boolean isGoalTrapped() {
@@ -190,7 +197,7 @@ public class BuchiIntersect<LETTER, PLACE>
 							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
 			// Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
 			final Stream<StronglyConnectedComponent<PLACE>> sccsStream = sccComp.getBalls().stream();
-			final Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<StronglyConnectedComponent<PLACE>>();
+			final Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<>();
 			sccsStream.forEach(sccs::add);
 			for (final var scc : sccs) {
 				final boolean isAcceptingSCC = scc.getNodes().stream()
