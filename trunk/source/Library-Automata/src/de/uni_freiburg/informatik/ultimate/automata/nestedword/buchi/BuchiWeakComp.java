@@ -28,7 +28,6 @@ package de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 
@@ -40,112 +39,115 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
 import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
+
 /**
- * Determines if a automaton is weak. And it makes inherently weak automata weak.
- * TODO Update
- * It supplies Accepting SCC places.
+ * Determines if a automaton is weak. And it makes inherently weak automata weak. TODO Update It supplies Accepting SCC
+ * places.
  *
  * @param <LETTER>
  * @param <PLACE>
-		*
+ *
  * @author Manuel Dienert
  */
-public class BuchiWeakComp<LETTER,PLACE>
- extends GeneralOperation<LETTER, PLACE, IStateFactory<PLACE>>{
-	
+public class BuchiWeakComp<LETTER, PLACE> extends GeneralOperation<LETTER, PLACE, IStateFactory<PLACE>> {
+
 	private final AutomataLibraryServices mServices;
-	private  NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonReachable;
+	private final NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonReachable;
 	private Collection<StronglyConnectedComponent<PLACE>> mSccs;
-//	private Set<StronglyConnectedComponent<PLACE>> mAcceptingSccs;
-//	private Set<StronglyConnectedComponent<PLACE>> mNonAcceptingSccs;
-//	private Set<StronglyConnectedComponent<PLACE>> mMixedSccs;
-	private Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
+	// private Set<StronglyConnectedComponent<PLACE>> mAcceptingSccs;
+	// private Set<StronglyConnectedComponent<PLACE>> mNonAcceptingSccs;
+	// private Set<StronglyConnectedComponent<PLACE>> mMixedSccs;
+	private final Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
 	private boolean isWeak;
-	
-	public BuchiWeakComp( final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable){
+
+	public BuchiWeakComp(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
+			final IPetriNet<LETTER, PLACE> petriNet,
+			final NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable) {
 		super(services);
 		this.mServices = services;
 		this.mBuchiAutomatonReachable = buchiAutomatonReachable;
-		
+
 		compute();
 	}
-	
+
 	private void compute() {
-		AutomatonSccComputation<LETTER, PLACE> sccComp =  
-				new AutomatonSccComputation<>(mServices, mBuchiAutomatonReachable, mBuchiAutomatonReachable.getStates(), 
-						mBuchiAutomatonReachable.getStates());
-		this.mSccs =  sccComp.getBalls();
-		// Each SCC either needs to be nonaccepting (no accepting states), accepting (only accepting states) or weakenizable (no cycles with only nonaccepting states)
-		for (var scc : mSccs) {
-			boolean isAcceptingSCC = 
+		final AutomatonSccComputation<LETTER, PLACE> sccComp = new AutomatonSccComputation<>(mServices,
+				mBuchiAutomatonReachable, mBuchiAutomatonReachable.getStates(), mBuchiAutomatonReachable.getStates());
+		this.mSccs = sccComp.getBalls();
+		// Each SCC either needs to be nonaccepting (no accepting states), accepting (only accepting states) or
+		// weakenizable (no cycles with only nonaccepting states)
+		for (final var scc : mSccs) {
+			final boolean isAcceptingSCC =
 					scc.getNodes().stream().allMatch(node -> mBuchiAutomatonReachable.getFinalStates().contains(node));
-			if (isAcceptingSCC) { 
+			if (isAcceptingSCC) {
 				scc.getNodes().stream().forEach(state -> mAcceptingSccPlaces.add(state));
-//				mAcceptingSccs.add(scc);
+				// mAcceptingSccs.add(scc);
 				continue;
-				}
-			boolean isNonAcceptingSCC = 
-					scc.getNodes().stream().allMatch(node -> !mBuchiAutomatonReachable.getFinalStates().contains(node));
-			if (isNonAcceptingSCC) { 
-//				mNonAcceptingSccs.add(scc);
-				continue; 
 			}
-//			 (!isAcceptingSCC && !isNonAcceptingSCC) 
-//				mMixedSccs.add(scc);
+			final boolean isNonAcceptingSCC =
+					scc.getNodes().stream().allMatch(node -> !mBuchiAutomatonReachable.getFinalStates().contains(node));
+			if (isNonAcceptingSCC) {
+				// mNonAcceptingSccs.add(scc);
+				continue;
+			}
+			// (!isAcceptingSCC && !isNonAcceptingSCC)
+			// mMixedSccs.add(scc);
 			if (isWeakenizable(scc)) {
 				scc.getNodes().stream().forEach(state -> mAcceptingSccPlaces.add(state));
-			}else {
+			} else {
 				this.isWeak = false;
 				return;
-//				return false;
+				// return false;
 			}
 
 		}
-//		return true;
+		// return true;
 		this.isWeak = true;
 		return;
 	}
+
 	// returns true if it weakenizable, false if not
 	/**
-	 * 
-	 * @param scc 
-	 * 		A {@link StronglyConnectedComponent} of the Büchi automaton
-	 * @return
-	 * 		True for weakenizable SCCs. So Sccs without nonaccepting loops.
+	 *
+	 * @param scc
+	 *            A {@link StronglyConnectedComponent} of the Büchi automaton
+	 * @return True for weakenizable SCCs. So Sccs without nonaccepting loops.
 	 */
-	private boolean isWeakenizable(StronglyConnectedComponent<PLACE> scc) {
-		Set<PLACE> nodes = scc.getNodes();
-		for (PLACE node : nodes) {
-			if (mBuchiAutomatonReachable.isFinal(node))
+	public boolean isWeakenizable(final StronglyConnectedComponent<PLACE> scc) {
+		final Set<PLACE> nodes = scc.getNodes();
+		for (final PLACE node : nodes) {
+			if (mBuchiAutomatonReachable.isFinal(node)) {
 				continue;
-			Stack<PLACE> stack = new Stack<PLACE>();
+			}
+			final Stack<PLACE> stack = new Stack<PLACE>();
 			stack.push(node);
 			if (DFS(stack) == false) {
 				return false;
-			};
+			}
+			;
 		}
 		return true;
 	}
-	
+
 	// Helper Function for the isWeakenizable method
-	private boolean DFS(Stack<PLACE> stack) {
-		PLACE currentPlace = stack.peek();
-		for (var succTrans : mBuchiAutomatonReachable.internalSuccessors(currentPlace)){
-			PLACE neighbor = succTrans.getSucc();
+	private boolean DFS(final Stack<PLACE> stack) {
+		final PLACE currentPlace = stack.peek();
+		for (final var succTrans : mBuchiAutomatonReachable.internalSuccessors(currentPlace)) {
+			final PLACE neighbor = succTrans.getSucc();
 			if (mBuchiAutomatonReachable.isFinal(neighbor)) {
-//				We only look for nonaccepting cycles. If we encounter an accepting state all subsequently discovered loops 
-//				would have an accepting place
-				continue; 
+				// We only look for nonaccepting cycles. If we encounter an accepting state all subsequently discovered
+				// loops
+				// would have an accepting place
+				continue;
 			}
 			if (stack.contains(neighbor)) {
 				return false; // TODO; we found an nonaccepting loop. SCC is not weakenizable.
-			}
-			else {
+			} else {
 				stack.push(neighbor);
 				if (DFS(stack) == false) {
 					return false;
-				};
+				}
+				;
 			}
 		}
 		stack.pop();// backtrack
@@ -155,6 +157,7 @@ public class BuchiWeakComp<LETTER,PLACE>
 	public boolean isWeak() {
 		return isWeak;
 	}
+
 	@Override
 	public Set<PLACE> getResult() {
 		return mAcceptingSccPlaces;

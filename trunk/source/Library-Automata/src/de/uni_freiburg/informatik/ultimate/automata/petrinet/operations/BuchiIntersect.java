@@ -28,6 +28,7 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  * to convey the resulting work.
  */
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -69,6 +70,7 @@ public class BuchiIntersect<LETTER, PLACE>
 
 	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
 	private static final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
+	private static final boolean INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION = true;
 	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
 	private static final boolean STEM_OPTIMIZATION = true;
 	private static final boolean SELF_LOOP_OPTIMIZATION = false;
@@ -118,6 +120,13 @@ public class BuchiIntersect<LETTER, PLACE>
 			return;
 		}
 		if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
+			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
+					new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
+			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+			return;
+		}
+		if (INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION && isInherentlyAllGoalAutomaton(mServices, mBuchiAutomaton)) {
+			// apart from checking a different condition we can create the same intersection as with allGoal automata!!!
 			final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
 					new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
@@ -185,6 +194,25 @@ public class BuchiIntersect<LETTER, PLACE>
 			}
 		}
 		return true;
+	}
+
+	public static <LETTER, PLACE> boolean isInherentlyAllGoalAutomaton(final AutomataLibraryServices services,
+			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+		try {
+			final NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
+					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
+			final AutomatonSccComputation<LETTER, PLACE> sccComp =
+					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting,
+							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
+			final Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
+			final BuchiWeakComp<LETTER, PLACE> weakComp =
+					new BuchiWeakComp<>(services, null, null, mBuchiAutomatonAccepting);
+			return sccs.stream().allMatch(weakComp::isWeakenizable);
+
+		} catch (final AutomataOperationCanceledException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	public static <LETTER, PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services,
