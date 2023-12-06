@@ -87,6 +87,13 @@ public final class BuchiPetriNet2FiniteAutomaton<LETTER, PLACE>
 
 	private final IBlackWhiteStateFactory<PLACE> mAcceptingOrNonAcceptingStateFactory;
 
+	public <FACTORY extends IPetriNet2FiniteAutomatonStateFactory<PLACE> & IBlackWhiteStateFactory<PLACE>> BuchiPetriNet2FiniteAutomaton(
+			final AutomataLibraryServices services, final FACTORY factory,
+			final IPetriNetTransitionProvider<LETTER, PLACE> operand)
+			throws PetriNetNot1SafeException, AutomataOperationCanceledException {
+		this(services, factory, factory, operand, null);
+	}
+
 	public BuchiPetriNet2FiniteAutomaton(final AutomataLibraryServices services,
 			final IPetriNet2FiniteAutomatonStateFactory<PLACE> factory,
 			final IBlackWhiteStateFactory<PLACE> blackWhiteFactory,
