@@ -92,6 +92,7 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		if (USE_AUTOMATON_FOR_EMPTINESS) {
 			final var automaton = new BuchiPetriNet2FiniteAutomaton<>(new AutomataLibraryServices(mServices),
 					mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
+			// mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
 			final var result = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIsEmpty<>(
 					new AutomataLibraryServices(mServices), automaton);
 			if (result.getResult()) {
@@ -137,67 +138,10 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		final BuchiComplementFKV<L, IPredicate> complNwa = new BuchiComplementFKV<>(
 				new AutomataLibraryServices(mServices), mDefaultStateFactory, interpolantAutomaton, stateDeterminizer);
 		mBenchmarkGenerator.reportHighestRank(complNwa.getHighestRank());
-		// Print Petri net to console
-		petriToApt(abstraction);
-		// mLogger.info(abstraction);
 		final BuchiIntersect<L, IPredicate> intersection = new BuchiIntersect<>(new AutomataLibraryServices(mServices),
-				mDefaultStateFactory, abstraction, complNwa.getResult());
+				mDefaultStateFactory, abstraction, complNwa.getResult(), mIteration == 1);
+
 		return intersection.getResult();
-	}
-
-	// prints a Petri net to console in apt format
-	private void petriToApt(final IPetriNet<L, IPredicate> abstraction) {
-		final StringBuilder res = new StringBuilder();
-
-		final String placePattern = "(\\d+?)#.*";
-		final String labelPattern = "\\[(\\d+?)\\].*";
-
-		res.append(".name \"output-net \"\n");
-		res.append(".type LPN\n");
-		res.append(".places \n");
-		for (final var place : abstraction.getPlaces()) {
-			final String newPlace = place.toString().replaceAll(placePattern, "$1");
-			res.append(newPlace + "\n");
-		}
-		final StringBuilder transitions = new StringBuilder(".transitions\n");
-		final StringBuilder flows = new StringBuilder(".flows \n");
-		int i = 0;
-		for (final var trans : abstraction.getTransitions()) {
-			final String name = "t" + i;
-			final String label = trans.getSymbol().toString().replaceAll(labelPattern, "$1");
-			transitions.append(name + "[label=\"" + label + "\"]" + "\n");
-			flows.append(name + ": {");
-			// flows.append(trans.getPredecessors().toString().replaceAll(placePattern, "$1"));
-			for (final var pred : trans.getPredecessors()) {
-				flows.append(pred.toString().replaceAll(placePattern, "$1"));
-				flows.append(",");
-			}
-			flows.deleteCharAt(flows.length() - 1);
-			flows.append("} -> {");
-			// flows.append(trans.getSuccessors().toString().replaceAll(placePattern, "$1"));
-			for (final var succ : trans.getSuccessors()) {
-				flows.append(succ.toString().replaceAll(placePattern, "$1"));
-				flows.append(",");
-			}
-			flows.deleteCharAt(flows.length() - 1);
-			flows.append("} \n");
-			i++;
-		}
-		res.append(transitions);
-		res.append(flows);
-
-		res.append(".initial_marking {");
-		// res.append(abstraction.getInitialPlaces().toString().replaceAll(placePattern, "$1"));
-		for (final var initPlace : abstraction.getInitialPlaces()) {
-			final String initPlaceString = initPlace.toString();
-			final String toReplace = initPlace.toString().replaceAll(placePattern, "$1,");
-			res.append(initPlace.toString().replaceAll(placePattern, "$1"));
-			res.append(",");
-		}
-		res.deleteCharAt(res.length() - 1);
-		res.append("}");
-
-		mLogger.info(res);
 	}
 
 	@Override

@@ -70,9 +70,10 @@ public class BuchiIntersect<LETTER, PLACE>
 
 	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
 	private static final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
-	private static final boolean INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION = true;
-	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = false;
-	private static final boolean STEM_OPTIMIZATION = true;
+	// includes ALL_GOAL_AUTOMATON_OPTIMIZATION but requires SCC Computation:
+	private static final boolean INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
+	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
+	private static final boolean STEM_OPTIMIZATION = false;
 	private static final boolean SELF_LOOP_OPTIMIZATION = false;
 	private static final boolean WEAK_AUTOMATON_OPTIMIZATION = false;
 	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
@@ -82,12 +83,15 @@ public class BuchiIntersect<LETTER, PLACE>
 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
 	private final AutomataLibraryServices mServices;
 
+	private boolean mFirstIteration;
+
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata)
-			throws AutomataOperationCanceledException {
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata,
+			final boolean firstIteration) throws AutomataOperationCanceledException {
 		super(services);
+		mFirstIteration = firstIteration;
 		mPetriNet = petriNet;
 		mBuchiAutomaton = buchiAutomata;
 		mServices = services;
@@ -97,21 +101,24 @@ public class BuchiIntersect<LETTER, PLACE>
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
-
 		executeIntersection();
-
 		mLogger.info(exitMessage());
+	}
+
+	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata)
+			throws AutomataOperationCanceledException {
+		this(services, factory, petriNet, buchiAutomata, true);
 	}
 
 	@SuppressWarnings("unused")
 	private void executeIntersection() throws AutomataOperationCanceledException {
-		if (ALL_ACCEPTING_NET_OPTIMIZATION && isAllAcceptingNet(mPetriNet)) {
+		// the all goal optimization only makes sense in the first iteration
+		if (ALL_ACCEPTING_NET_OPTIMIZATION && mFirstIteration && isAllAcceptingNet(mPetriNet)) {
 			final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
 					new BuchiIntersectAllAcceptingtNet<>(mServices, mPetriNet, mBuchiAutomaton);
 			mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 			return;
-			// } else if (WEAK_AUTOMATON_OPTIMIZATION && isWeakAutomaton(mServices,mBuchiAutomata)) {
-		} else if (WEAK_AUTOMATON_OPTIMIZATION) {
 		}
 		if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
 			final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection =
@@ -154,7 +161,6 @@ public class BuchiIntersect<LETTER, PLACE>
 				e.printStackTrace();
 				return;
 			}
-		} else if (SELF_LOOP_OPTIMIZATION) {
 		}
 		if (SELF_LOOP_OPTIMIZATION) {
 			final BuchiIntersectDefault<LETTER, PLACE> intersection = new BuchiIntersectDefault<>(mServices,
