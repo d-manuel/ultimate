@@ -34,4 +34,5 @@ NestedWordAutomaton nwa = (
 	returnTransitions = {}
 );
 
-print(buchiIntersect(net, nwa));
+//print(buchiIntersect(net, nwa));
+print(buchiPetriNet2FiniteAutomaton(buchiIntersect(net, nwa)));
