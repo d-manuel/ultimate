@@ -170,7 +170,11 @@ public class PredicateFactoryRefinement extends PredicateFactoryForInterpolantAu
 		final ArrayList<Term> terms = new ArrayList<>();
 		for (final IPredicate pred : marking) {
 			if (pred instanceof ISLPredicate) {
-				programPoints.add(((ISLPredicate) pred).getProgramPoint());
+				// programPoints.add(((ISLPredicate) pred).getProgramPoint());
+				final var programPoint = ((ISLPredicate) pred).getProgramPoint();
+				if (programPoint != null) {
+					programPoints.add(programPoint);
+				}
 			}
 			terms.add(pred.getFormula());
 		}

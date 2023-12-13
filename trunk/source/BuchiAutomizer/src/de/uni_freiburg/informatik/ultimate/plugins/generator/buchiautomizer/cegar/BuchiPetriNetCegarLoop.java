@@ -96,10 +96,10 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 			final var result = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIsEmpty<>(
 					new AutomataLibraryServices(mServices), automaton);
 			if (result.getResult()) {
-				return false;
+				return true;
 			}
 			mCounterexample = result.getAcceptingNestedLassoRun();
-			return true;
+			return false;
 		}
 		final var isempty = new BuchiIsEmpty<>(new AutomataLibraryServices(mServices), abstraction, mPref.eventOrder(),
 				mPref.cutOffRequiresSameTransition(), true);
@@ -147,6 +147,7 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 	@Override
 	protected IPetriNet<L, IPredicate> reduceAbstractionSize(final IPetriNet<L, IPredicate> abstraction,
 			final Minimization automataMinimization) throws AutomataOperationCanceledException {
+		// TODO we never use this automataMinimization here??
 		try {
 			return new RemoveDeadBuchi<>(new AutomataLibraryServices(mServices), abstraction, null).getResult();
 		} catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
