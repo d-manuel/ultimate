@@ -90,6 +90,24 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		mLogger.info(exitMessage());
 	}
 
+	private PLACE inputQGetQ1(final PLACE p) {
+		final PLACE res = mInputQGetQ1.get(p);
+		assert (res != null);
+		return res;
+	}
+
+	private PLACE inputQGetQ2(final PLACE p) {
+		final PLACE res = mInputQGetQ2.get(p);
+		assert (res != null);
+		return res;
+	}
+
+	private PLACE inputQ2GetQ(final PLACE p) {
+		final PLACE res = mInputQ2GetQ.get(p);
+		assert (res != null);
+		return res;
+	}
+
 	private void computeAcceptingSccs() throws AutomataOperationCanceledException {
 		final NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
 				new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
@@ -162,7 +180,7 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 		final Set<PLACE> predecessors = new HashSet<>();
 		predecessors.addAll(petriTransition.getPredecessors());
-		predecessors.add(mInputQGetQ1.get(buchiPredecessor));
+		predecessors.add(inputQGetQ1(buchiPredecessor));
 		final Set<PLACE> successors = new HashSet<>();
 		successors.addAll(petriTransition.getSuccessors());
 		successors.add(mInputQGetQ1.get(buchiTransition.getSucc()));
@@ -183,11 +201,13 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		// Transiton 1 index 1 to X
 		final Set<PLACE> predecessors1 = new HashSet<>();
 		predecessors1.addAll(petriTransition.getPredecessors());
-		predecessors1.add(mInputQGetQ1.get(buchiPredecessor));
+		predecessors1.add(inputQGetQ1(buchiPredecessor));
 		final Set<PLACE> successors1 = new HashSet<>();
 		successors1.addAll(petriTransition.getSuccessors());
-		successors1.add((petriSuccAccepting && buchiSuccInScc) ? mInputQGetQ2.get(buchiTransition.getSucc())
-				: mInputQGetQ1.get(buchiTransition.getSucc()));
+		// for an index 1 transition we only go to index 2 if we stay in an accepting scc and do not fire into an
+		// accepting Petri place
+		successors1.add((petriSuccAccepting && buchiSuccInScc) ? inputQGetQ2(buchiTransition.getSucc())
+				: inputQGetQ1(buchiTransition.getSucc()));
 
 		if (checkContainsNull(predecessors1)) {
 			mLogger.error("bug here");
@@ -199,20 +219,15 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		// Transition 2 index 2 to Y
 		final Set<PLACE> predecessors2 = new HashSet<>();
 		predecessors2.addAll(petriTransition.getPredecessors());
-		predecessors2.add(mInputQGetQ2.get(buchiPredecessor));
+		predecessors2.add(inputQGetQ2(buchiPredecessor));
 		final Set<PLACE> successors2 = new HashSet<>();
 		final var s = petriTransition.getSuccessors();
 		successors2.addAll(petriTransition.getSuccessors());
-		// successors2.add((buchiPredAccepting) ? mInputQGetQ1.get(buchiTransition.getSucc())
-		// : mInputQGetQ2.get(buchiTransition.getSucc()));
-		if (buchiSuccInScc) {
-			successors2.add((buchiPredAccepting) ? mInputQGetQ1.get(buchiTransition.getSucc())
-					: mInputQGetQ2.get(buchiTransition.getSucc()));
-		} else {
-			successors2.add(buchiPredAccepting ? mInputQGetQ1.get(buchiTransition.getSucc())
-					: mInputQ2GetQ.get(buchiTransition.getSucc()));
-		}
 
+		// for an index 2 transition we only stay in index 2 if we stay in an accepting SCC and do not fire out of an
+		// accepting Buchi state.
+		successors2.add((buchiSuccInScc && !buchiPredAccepting) ? inputQGetQ2(buchiTransition.getSucc())
+				: inputQGetQ1(buchiTransition.getSucc()));
 		if (checkContainsNull(predecessors2)) {
 			mLogger.error("bug here");
 		}
