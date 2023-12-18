@@ -49,13 +49,16 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiInt
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.Difference;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
+import de.uni_freiburg.informatik.ultimate.core.model.preferences.IPreferenceProvider;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
 import de.uni_freiburg.informatik.ultimate.lib.modelcheckerutils.cfg.structure.IIcfg;
 import de.uni_freiburg.informatik.ultimate.lib.modelcheckerutils.cfg.structure.IIcfgTransition;
 import de.uni_freiburg.informatik.ultimate.lib.modelcheckerutils.smt.predicates.IPredicate;
 import de.uni_freiburg.informatik.ultimate.lib.modelcheckerutils.smt.predicates.PredicateFactory;
+import de.uni_freiburg.informatik.ultimate.plugins.generator.buchiautomizer.Activator;
 import de.uni_freiburg.informatik.ultimate.plugins.generator.buchiautomizer.BuchiCegarLoopBenchmarkGenerator;
 import de.uni_freiburg.informatik.ultimate.plugins.generator.buchiautomizer.RankVarConstructor;
+import de.uni_freiburg.informatik.ultimate.plugins.generator.buchiautomizer.preferences.BuchiAutomizerPreferenceInitializer;
 import de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.PredicateFactoryRefinement;
 import de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.preferences.TAPreferences;
 import de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.preferences.TraceAbstractionPreferenceInitializer.Minimization;
@@ -70,10 +73,13 @@ import de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.pr
  */
 public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		extends AbstractBuchiCegarLoop<L, IPetriNet<L, IPredicate>> {
-	private static final boolean USE_AUTOMATON_FOR_EMPTINESS = false;
+	// private static final boolean USE_AUTOMATON_FOR_EMPTINESS = false;
 
 	private final Marking2MLPredicate mMarking2MLPredicate;
 	private final PredicateFactoryRefinement mStateFactoryForRefinement;
+
+	final boolean mUseBuchiPetriOptimizations;
+	final boolean mUseAutomatonForEmptiness;
 
 	public BuchiPetriNetCegarLoop(final IIcfg<?> icfg, final RankVarConstructor rankVarConstructor,
 			final PredicateFactory predicateFactory, final TAPreferences taPrefs,
@@ -85,11 +91,18 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 				benchmarkGenerator);
 		mMarking2MLPredicate = new Marking2MLPredicate(predicateFactory);
 		mStateFactoryForRefinement = stateFactoryForRefinement;
+
+		final IPreferenceProvider baPref = mServices.getPreferenceProvider(Activator.PLUGIN_ID);
+		mUseBuchiPetriOptimizations =
+				baPref.getBoolean(BuchiAutomizerPreferenceInitializer.LABEL_USE_BUCHI_PETRI_OPTIMIZATIONS);
+		mUseAutomatonForEmptiness =
+				baPref.getBoolean(BuchiAutomizerPreferenceInitializer.LABEL_AUTOMATA_FOR_BUCHI_PETRI_EMTPTINESS);
 	}
 
 	@Override
 	protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction) throws AutomataLibraryException {
-		if (USE_AUTOMATON_FOR_EMPTINESS) {
+		if (mUseAutomatonForEmptiness) {
+			mLogger.info("use automaton for emptiness check");
 			final var automaton = new BuchiPetriNet2FiniteAutomaton<>(new AutomataLibraryServices(mServices),
 					mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
 			// mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
@@ -142,7 +155,7 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 				new AutomataLibraryServices(mServices), mDefaultStateFactory, interpolantAutomaton, stateDeterminizer);
 		mBenchmarkGenerator.reportHighestRank(complNwa.getHighestRank());
 		final BuchiIntersect<L, IPredicate> intersection = new BuchiIntersect<>(new AutomataLibraryServices(mServices),
-				mDefaultStateFactory, abstraction, complNwa.getResult(), mIteration == 1);
+				mDefaultStateFactory, abstraction, complNwa.getResult(), mUseBuchiPetriOptimizations, mIteration == 1);
 
 		return intersection.getResult();
 	}

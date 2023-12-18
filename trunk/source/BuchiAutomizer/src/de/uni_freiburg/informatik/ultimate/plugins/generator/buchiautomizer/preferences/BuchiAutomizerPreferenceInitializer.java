@@ -144,6 +144,11 @@ public class BuchiAutomizerPreferenceInitializer extends UltimatePreferenceIniti
 	private static final NcsbImplementation DEF_NCSB_IMPLEMENTATION = NcsbImplementation.ORIGINAL;
 	public static final String LABEL_AUTOMATON_TYPE = "Automaton type for concurrent programs";
 	private static final AutomatonTypeConcurrent DEF_AUTOMATON_TYPE = AutomatonTypeConcurrent.BUCHI_AUTOMATON;
+	public static final String LABEL_USE_BUCHI_PETRI_OPTIMIZATIONS = "Use Buchi Petri Net Intersection Optimizations";
+	private static final boolean DEF_USE_BUCHI_PETRI_OPTIMIZATIONS = false;
+	public static final String LABEL_AUTOMATA_FOR_BUCHI_PETRI_EMTPTINESS =
+			"Use automata for Büchi Petri Net emptiness check";
+	public static final boolean DEF_AUTOMATA_FOR_BUCHI_PETRI_EMPTINESS = false;
 
 	public BuchiAutomizerPreferenceInitializer() {
 		super(Activator.PLUGIN_ID, "Buchi Automizer (Termination Analysis)");
@@ -208,6 +213,10 @@ public class BuchiAutomizerPreferenceInitializer extends UltimatePreferenceIniti
 				new UltimatePreferenceItem<>(LABEL_NCSB_IMPLEMENTATION, DEF_NCSB_IMPLEMENTATION, PreferenceType.Combo,
 						NcsbImplementation.values()),
 				new UltimatePreferenceItem<>(LABEL_AUTOMATON_TYPE, DEF_AUTOMATON_TYPE, PreferenceType.Combo,
-						AutomatonTypeConcurrent.values()) };
+						AutomatonTypeConcurrent.values()),
+				new UltimatePreferenceItem<>(LABEL_USE_BUCHI_PETRI_OPTIMIZATIONS, DEF_USE_BUCHI_PETRI_OPTIMIZATIONS,
+						PreferenceType.Boolean),
+				new UltimatePreferenceItem<>(LABEL_AUTOMATA_FOR_BUCHI_PETRI_EMTPTINESS,
+						DEF_AUTOMATA_FOR_BUCHI_PETRI_EMPTINESS, PreferenceType.Boolean) };
 	}
 }
