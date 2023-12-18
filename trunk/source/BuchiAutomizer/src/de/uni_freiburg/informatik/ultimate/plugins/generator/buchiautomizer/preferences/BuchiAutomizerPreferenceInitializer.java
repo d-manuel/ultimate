@@ -147,7 +147,7 @@ public class BuchiAutomizerPreferenceInitializer extends UltimatePreferenceIniti
 	public static final String LABEL_USE_BUCHI_PETRI_OPTIMIZATIONS = "Use Buchi Petri Net Intersection Optimizations";
 	private static final boolean DEF_USE_BUCHI_PETRI_OPTIMIZATIONS = false;
 	public static final String LABEL_AUTOMATA_FOR_BUCHI_PETRI_EMTPTINESS =
-			"Use automata for Büchi Petri Net emptiness check";
+			"Use automata for Buchi Petri Net emptiness check";
 	public static final boolean DEF_AUTOMATA_FOR_BUCHI_PETRI_EMPTINESS = false;
 
 	public BuchiAutomizerPreferenceInitializer() {
