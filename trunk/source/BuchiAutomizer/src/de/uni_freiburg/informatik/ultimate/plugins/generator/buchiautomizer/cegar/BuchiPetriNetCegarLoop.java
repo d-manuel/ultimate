@@ -40,14 +40,14 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiComple
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IStateDeterminizer;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.PowersetDeterminizer;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersect;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.DifferencePairwiseOnDemand;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDeadBuchi;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.Difference;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
 import de.uni_freiburg.informatik.ultimate.lib.modelcheckerutils.cfg.structure.IIcfg;
@@ -151,12 +151,13 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 	protected IPetriNet<L, IPredicate> reduceAbstractionSize(final IPetriNet<L, IPredicate> abstraction,
 			final Minimization automataMinimization) throws AutomataOperationCanceledException {
 		// TODO we never use this automataMinimization here??
-		try {
-			return new RemoveDeadBuchi<>(new AutomataLibraryServices(mServices), abstraction, null).getResult();
-		} catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
-			mLogger.warn(
-					"Unhandled " + e + "occured during abstraction size reduction. Continuing with non-reduced net");
-			return abstraction;
-		}
+		return abstraction;
+		// try {
+		// return new RemoveDeadBuchi<>(new AutomataLibraryServices(mServices), abstraction, null).getResult();
+		// } catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
+		// mLogger.warn(
+		// "Unhandled " + e + "occured during abstraction size reduction. Continuing with non-reduced net");
+		// return abstraction;
+		// }
 	}
 }
