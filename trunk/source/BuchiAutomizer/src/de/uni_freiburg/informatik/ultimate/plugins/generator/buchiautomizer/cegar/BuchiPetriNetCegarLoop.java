@@ -122,8 +122,11 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 			final INwaOutgoingLetterAndTransitionProvider<L, IPredicate> interpolantAutomaton)
 			throws AutomataLibraryException {
 		try {
-			return new DifferencePairwiseOnDemand<>(new AutomataLibraryServices(mServices), abstraction,
-					interpolantAutomaton).getResult();
+			return new Difference<>(new AutomataLibraryServices(mServices), mDefaultStateFactory, abstraction,
+					new NestedWordAutomatonReachableStates<>(new AutomataLibraryServices(mServices),
+							interpolantAutomaton)).getResult();
+			// return new DifferencePairwiseOnDemand<>(new AutomataLibraryServices(mServices), abstraction,
+			// interpolantAutomaton).getResult();
 		} catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
 			throw new AutomataLibraryException(getClass(), e.toString());
 		}
