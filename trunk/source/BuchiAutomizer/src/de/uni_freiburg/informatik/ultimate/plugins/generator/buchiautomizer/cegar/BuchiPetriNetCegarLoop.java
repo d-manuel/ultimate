@@ -48,6 +48,7 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersect;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.Difference;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveRedundantBuchi;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
 import de.uni_freiburg.informatik.ultimate.core.model.preferences.IPreferenceProvider;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
@@ -164,6 +165,11 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 	protected IPetriNet<L, IPredicate> reduceAbstractionSize(final IPetriNet<L, IPredicate> abstraction,
 			final Minimization automataMinimization) throws AutomataOperationCanceledException {
 		// TODO we never use this automataMinimization here??
+		final boolean redundantPlaces =
+				new RemoveRedundantBuchi<>(new AutomataLibraryServices(mServices), abstraction).getResult();
+		if (redundantPlaces) {
+			mLogger.info("we found something");
+		}
 		return abstraction;
 		// try {
 		// return new RemoveDeadBuchi<>(new AutomataLibraryServices(mServices), abstraction, null).getResult();
