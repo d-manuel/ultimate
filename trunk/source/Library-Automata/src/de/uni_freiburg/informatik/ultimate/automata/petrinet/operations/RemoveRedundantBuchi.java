@@ -27,7 +27,6 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,8 +34,10 @@ import java.util.stream.Collectors;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
+import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
 /**
  */
@@ -48,7 +49,8 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 	private final IPetriNet<LETTER, PLACE> mOperand;
 	// private Collection<Condition<LETTER, PLACE>> mAcceptingConditions;
 	// private final BoundedPetriNet<LETTER, PLACE> mResult;
-	private final Map<Set<PLACE>, PLACE> mReplacement = new HashMap<>();
+	// private final Map<Set<PLACE>, PLACE> mReplacement = new HashMap<>();
+	private final Map<PLACE, PLACE> mReplacement = new HashMap<>();
 	private boolean mResult;
 
 	public RemoveRedundantBuchi(final AutomataLibraryServices services, final IPetriNet<LETTER, PLACE> operand) {
@@ -56,68 +58,12 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 		mOperand = operand;
 
 		printStartMessage();
-		reduce();
+		removeRedundantPlaces();
+		updatePetriNet(operand);
 		printExitMessage();
 	}
 
-	private void reduce() {
-		// removeRedundantPlaces();
-		// removeRedundantPlaces2();
-		removeRedundantPlaces3();
-	}
-
-	// d)
 	private boolean removeRedundantPlaces() {
-		for (final var trans : mOperand.getTransitions()) {
-			// succs places with only one successor transition and only one predecessor transition.
-			final List<PLACE> oneSuccesors =
-					trans.getSuccessors().stream().filter(place -> mOperand.getSuccessors(place).size() == 1)
-							.filter(place -> mOperand.getPredecessors(place).size() == 1).collect(Collectors.toList());
-			for (final PLACE oneSucc1 : oneSuccesors) {
-				// we know it has only one successor.
-				final Transition<LETTER, PLACE> succSuccTransition1 =
-						mOperand.getSuccessors(oneSucc1).iterator().next();
-
-				final List<PLACE> res = oneSuccesors.stream()
-						.filter(place -> place != oneSucc1
-								&& mOperand.getSuccessors(place).iterator().next() == succSuccTransition1)
-						.collect(Collectors.toList());
-				// res is the set of places we could "remove"!
-				if (res.size() > 1) {
-					mResult = true;
-					return true;
-				}
-			}
-		}
-		mResult = false;
-		return false;
-	}
-
-	private boolean removeRedundantPlaces2() {
-		for (final var trans : mOperand.getTransitions()) {
-			// succs places with only one predecessesro transitiion (but maybe multiple succs)
-			final List<PLACE> soloSuccessors = trans.getSuccessors().stream()
-					.filter(place -> mOperand.getPredecessors(place).size() == 1).collect(Collectors.toList());
-
-			for (final PLACE soloSucc : soloSuccessors) {
-				// we know it has only one successor.
-				final Set<Transition<LETTER, PLACE>> succTransitions = mOperand.getSuccessors(soloSucc);
-
-				final List<PLACE> res = soloSuccessors.stream().filter(
-						place -> place != soloSucc && mOperand.getSuccessors(place).containsAll(succTransitions))
-						.collect(Collectors.toList());
-				// res is the set of places we could "remove"!
-				if (res.size() > 1) {
-					mResult = true;
-					return true;
-				}
-			}
-		}
-		mResult = false;
-		return false;
-	}
-
-	private boolean removeRedundantPlaces3() {
 		Set<PLACE> checked = new HashSet<>();
 		for (final var trans : mOperand.getTransitions()) {
 			final Set<PLACE> postset = trans.getSuccessors();
@@ -130,7 +76,8 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 				final Set<PLACE> replacements = postset.stream()// .filter(candidate -> candidate != place)
 						.filter(candidate -> mOperand.getPredecessors(candidate).equals(preset))
 						.collect(Collectors.toSet());
-				mReplacement.put(replacements, place);
+				replacements.forEach(x -> mReplacement.put(x, place));
+				// mReplacement.put(replacements, place);
 				if (replacements.size() > 1) {
 					mResult = true;
 					return true;
@@ -151,7 +98,8 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 						.filter(candidate -> mOperand.getSuccessors(candidate).equals(postset))
 						.collect(Collectors.toSet());
 
-				mReplacement.put(replacements, place);
+				replacements.forEach(x -> mReplacement.put(x, place));
+				// mReplacement.put(replacements, place);
 				if (replacements.size() > 1) {
 					mResult = true;
 					return true;
@@ -159,6 +107,26 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 			}
 		}
 		return false;
+	}
+
+	// create the new Petri net with reduced number of places
+	// TODO maybe into CopySubnet class
+	private IPetriNet<LETTER, PLACE> updatePetriNet(final IPetriNet<LETTER, PLACE> operand) {
+		final BoundedPetriNet<LETTER, PLACE> res = new BoundedPetriNet<>(mServices, mOperand.getAlphabet(), false);
+		// Add places
+		// TODO maybe directly use a separate list. or directly add them after they have been checked!! or keept this
+		// copying isolated. don't know yet.
+		mReplacement.values().stream().forEach(place -> res.addPlace(place, true, true));// TODO make this correct
+
+		// Add transitions...
+		for (final var trans : mOperand.getTransitions()) {
+			final var preds = trans.getPredecessors().stream().map(p -> mReplacement.get(p)).distinct()
+					.collect(Collectors.toSet());
+			final var succs =
+					trans.getSuccessors().stream().map(p -> mReplacement.get(p)).distinct().collect(Collectors.toSet());
+			res.addTransition(trans.getSymbol(), ImmutableSet.of(preds), ImmutableSet.of(succs));
+		}
+		return res;
 	}
 
 	private boolean timeout() {

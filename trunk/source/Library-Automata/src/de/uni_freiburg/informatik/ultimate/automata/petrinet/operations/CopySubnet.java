@@ -186,8 +186,8 @@ public final class CopySubnet<LETTER, PLACE> {
 	}
 
 	/**
-	 * Returns a the required places in a sub-net N' of a Petri net N. Sub-net N' has the same places as N, but only
-	 * some transitions.
+	 * Returns the required places in a sub-net N' of a Petri net N. Sub-net N' has the same places as N, but only some
+	 * transitions.
 	 * <p>
 	 * A place p is required in N' iff p is predecessor of some transition in N', or p is accepting and successor of
 	 * some transition in N', or p is accepting and initial in N'.
