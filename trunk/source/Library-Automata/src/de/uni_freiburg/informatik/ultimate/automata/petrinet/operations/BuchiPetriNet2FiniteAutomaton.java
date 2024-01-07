@@ -27,7 +27,6 @@
 
 package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -132,8 +131,7 @@ public final class BuchiPetriNet2FiniteAutomaton<LETTER, PLACE>
 		mContentFactory = factory;
 		mAcceptingOrNonAcceptingStateFactory = blackWhiteFactory;
 		final Set<LETTER> alphabet = new HashSet<>(operand.getAlphabet());
-		final VpAlphabet<LETTER> vpAlphabet =
-				new VpAlphabet<>(alphabet, Collections.emptySet(), Collections.emptySet());
+		final VpAlphabet<LETTER> vpAlphabet = new VpAlphabet<>(alphabet);
 		mResult = new NestedWordAutomaton<>(mServices, vpAlphabet, factory);
 		getState(new Marking<>(ImmutableSet.of(operand.getInitialPlaces())), true, false);
 		while (!mWorklist.isEmpty()) {
@@ -228,13 +226,8 @@ public final class BuchiPetriNet2FiniteAutomaton<LETTER, PLACE>
 		for (final Transition<LETTER, PLACE> transition : outgoing) {
 			if (marking.isTransitionEnabled(transition)) {
 				final Marking<PLACE> succMarking = marking.fireTransition(transition);
-				PLACE succState = null;
-				if (transition.getSuccessors().stream().anyMatch(mOperand::isAccepting)) {
-					succState = getState(succMarking, false, true);
-				} else {
-					succState = getState(succMarking, false, false);
-				}
-
+				final boolean isAcceptingTrans = transition.getSuccessors().stream().anyMatch(mOperand::isAccepting);
+				final PLACE succState = getState(succMarking, false, isAcceptingTrans);
 				if (succState != null) {
 					mResult.addInternalTransition(state, transition.getSymbol(), succState);
 				}
