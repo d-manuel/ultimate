@@ -89,15 +89,15 @@ public class BuchiIntersect<LETTER, PLACE>
 	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata,
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton,
 			final boolean useOptimizations, final boolean firstIteration) throws AutomataOperationCanceledException {
 		super(services);
 		mFirstIteration = firstIteration;
 		mPetriNet = petriNet;
-		mBuchiAutomaton = buchiAutomata;
+		mBuchiAutomaton = buchiAutomaton;
 		mServices = services;
 		mLogger.info(startMessage());
-		if (buchiAutomata.getInitialStates().size() != 1) {
+		if (buchiAutomaton.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mLabeledBuchiPlaceFactory = factory;
@@ -110,9 +110,9 @@ public class BuchiIntersect<LETTER, PLACE>
 	}
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata)
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton)
 			throws AutomataOperationCanceledException {
-		this(services, factory, petriNet, buchiAutomata, false, true);
+		this(services, factory, petriNet, buchiAutomaton, false, true);
 		// TODO default args
 	}
 

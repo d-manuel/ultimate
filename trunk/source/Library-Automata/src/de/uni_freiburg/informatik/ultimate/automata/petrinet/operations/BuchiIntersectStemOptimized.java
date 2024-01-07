@@ -71,13 +71,13 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 	public BuchiIntersectStemOptimized(final AutomataLibraryServices services,
 			final IBlackWhiteStateFactory<PLACE> factory, final BoundedPetriNet<LETTER, PLACE> petriNet,
-			final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) throws AutomataOperationCanceledException {
+			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) throws AutomataOperationCanceledException {
 		super(services);
 		mPetriNet = petriNet;
-		mBuchiAutomaton = buchiAutomata;
+		mBuchiAutomaton = buchiAutomaton;
 
 		mLogger.info(startMessage());
-		if (buchiAutomata.getInitialStates().size() != 1) {
+		if (buchiAutomaton.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mLabeledBuchiPlaceFactory = factory;

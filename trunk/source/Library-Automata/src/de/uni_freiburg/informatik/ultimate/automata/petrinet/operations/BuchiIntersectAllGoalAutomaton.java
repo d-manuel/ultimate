@@ -50,17 +50,17 @@ import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
-	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
+	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
 
-	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersectAllGoalAutomaton(final AutomataLibraryServices services,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
 		super(services);
 		mPetriNet = petriNet;
-		mBuchiAutomata = buchiAutomata;
+		mBuchiAutomaton = buchiAutomaton;
 		mLogger.info(startMessage());
-		if (buchiAutomata.getInitialStates().size() != 1) {
+		if (buchiAutomaton.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
@@ -88,25 +88,25 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 	}
 
 	private final void addBuchiPlaces() {
-		for (final PLACE state : mBuchiAutomata.getStates()) {
-			mIntersectionNet.addPlace(state, mBuchiAutomata.isInitial(state), false);
+		for (final PLACE state : mBuchiAutomaton.getStates()) {
+			mIntersectionNet.addPlace(state, mBuchiAutomaton.isInitial(state), false);
 
 		}
 	}
 
 	private final void addTransitions() {
 		for (final Transition<LETTER, PLACE> petriTransition : mPetriNet.getTransitions()) {
-			LETTER label = petriTransition.getSymbol();
-			for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
-				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomata
+			final LETTER label = petriTransition.getSymbol();
+			for (final PLACE buchiPlace : mBuchiAutomaton.getStates()) {
+				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomaton
 						.internalSuccessors(buchiPlace, label)) {
 
-					Set<PLACE> predecessors = new HashSet<>(petriTransition.getPredecessors());
+					final Set<PLACE> predecessors = new HashSet<>(petriTransition.getPredecessors());
 					predecessors.add(buchiPlace);
-					Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors());
+					final Set<PLACE> successors = new HashSet<>(petriTransition.getSuccessors());
 					successors.add(buchiTransition.getSucc());
 
-					var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
+					final var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
 							ImmutableSet.of(successors));
 					mLogger.info("Added transition " + Utils.transitionToString(trans1));
 				}
@@ -143,7 +143,7 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 	//
 	// final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new
 	// de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
-	// mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
+	// mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomaton).getResult();
 	//
 	// final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
 	// (INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
