@@ -46,9 +46,9 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersect;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectLazy;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.Difference;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveRedundantBuchi;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
 import de.uni_freiburg.informatik.ultimate.core.model.preferences.IPreferenceProvider;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
@@ -81,6 +81,8 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 
 	final boolean mUseBuchiPetriOptimizations;
 	final boolean mUseAutomatonForEmptiness;
+
+	boolean USE_LAZY_INTERSECTION = true;
 
 	public BuchiPetriNetCegarLoop(final IIcfg<?> icfg, final RankVarConstructor rankVarConstructor,
 			final PredicateFactory predicateFactory, final TAPreferences taPrefs,
@@ -139,8 +141,6 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 			return new Difference<>(new AutomataLibraryServices(mServices), mDefaultStateFactory, abstraction,
 					new NestedWordAutomatonReachableStates<>(new AutomataLibraryServices(mServices),
 							interpolantAutomaton)).getResult();
-			// return new DifferencePairwiseOnDemand<>(new AutomataLibraryServices(mServices), abstraction,
-			// interpolantAutomaton).getResult();
 		} catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
 			throw new AutomataLibraryException(getClass(), e.toString());
 		}
@@ -155,28 +155,24 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		final BuchiComplementFKV<L, IPredicate> complNwa = new BuchiComplementFKV<>(
 				new AutomataLibraryServices(mServices), mDefaultStateFactory, interpolantAutomaton, stateDeterminizer);
 		mBenchmarkGenerator.reportHighestRank(complNwa.getHighestRank());
+
+		if (USE_LAZY_INTERSECTION) {
+			final BuchiIntersectLazy<L, IPredicate> intersection = new BuchiIntersectLazy<>(
+					new AutomataLibraryServices(mServices), mDefaultStateFactory, abstraction, complNwa.getResult());
+
+			return intersection.getResult();
+		}
 		final BuchiIntersect<L, IPredicate> intersection = new BuchiIntersect<>(new AutomataLibraryServices(mServices),
 				mDefaultStateFactory, abstraction, complNwa.getResult(), mUseBuchiPetriOptimizations, mIteration == 1);
-
 		return intersection.getResult();
 	}
 
 	@Override
 	protected IPetriNet<L, IPredicate> reduceAbstractionSize(final IPetriNet<L, IPredicate> abstraction,
 			final Minimization automataMinimization) throws AutomataOperationCanceledException {
-		// TODO we never use this automataMinimization here??
-		final boolean redundantPlaces =
-				new RemoveRedundantBuchi<>(new AutomataLibraryServices(mServices), abstraction).getResult();
-		if (redundantPlaces) {
-			mLogger.info("we found something");
-		}
+
+		// return new BackwardRemoveSinkPlaces<>(new AutomataLibraryServices(mServices), abstraction).getResult();
+		// return new RemoveRedundantBuchi<>(new AutomataLibraryServices(mServices), abstraction).getResult();
 		return abstraction;
-		// try {
-		// return new RemoveDeadBuchi<>(new AutomataLibraryServices(mServices), abstraction, null).getResult();
-		// } catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
-		// mLogger.warn(
-		// "Unhandled " + e + "occured during abstraction size reduction. Continuing with non-reduced net");
-		// return abstraction;
-		// }
 	}
 }
