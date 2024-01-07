@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2023-2024 Manuel Dienert
  * Copyright (C) 2009-2023 University of Freiburg
  *
  * This file is part of the ULTIMATE Automata Library.
@@ -26,7 +27,6 @@
 package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,117 +39,76 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.T
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IStateFactory;
 import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
-/**
+/*
+ * Merge places with the Same pre- and postset
  */
-// public class RemoveRedundantBuchi<LETTER, PLACE, CRSF extends IStateFactory<PLACE> &
-// IPetriNet2FiniteAutomatonStateFactory<PLACE> & INwaInclusionStateFactory<PLACE>>
-// extends UnaryNetOperation<LETTER, PLACE, CRSF> {
 public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER, PLACE, IStateFactory<PLACE>> {
 
 	private final IPetriNet<LETTER, PLACE> mOperand;
 	// private Collection<Condition<LETTER, PLACE>> mAcceptingConditions;
-	// private final BoundedPetriNet<LETTER, PLACE> mResult;
-	// private final Map<Set<PLACE>, PLACE> mReplacement = new HashMap<>();
+	private final BoundedPetriNet<LETTER, PLACE> mResult;
 	private final Map<PLACE, PLACE> mReplacement = new HashMap<>();
-	private boolean mResult;
 
 	public RemoveRedundantBuchi(final AutomataLibraryServices services, final IPetriNet<LETTER, PLACE> operand) {
 		super(services);
 		mOperand = operand;
 
 		printStartMessage();
-		removeRedundantPlaces();
-		updatePetriNet(operand);
+		mResult = new BoundedPetriNet<>(mServices, mOperand.getAlphabet(), false);
+		computeRedudantPlaces();
+		updatePetriNet();
 		printExitMessage();
 	}
 
-	private boolean removeRedundantPlaces() {
-		Set<PLACE> checked = new HashSet<>();
+	/**
+	 * Compute places that have the same pre and postset transitions and merge them into single places
+	 */
+	private void computeRedudantPlaces() {
 		for (final var trans : mOperand.getTransitions()) {
-			final Set<PLACE> postset = trans.getSuccessors();
-			for (final PLACE place : postset) {
-				if (checked.contains(place)) {
+			final Set<PLACE> candidates = trans.getSuccessors();
+
+			for (final PLACE candidate : candidates) {
+				if (mReplacement.containsKey(candidates)) {
 					continue;
 				}
-				checked.add(place);
-				final Set<Transition<LETTER, PLACE>> preset = mOperand.getPredecessors(place);
-				final Set<PLACE> replacements = postset.stream()// .filter(candidate -> candidate != place)
-						.filter(candidate -> mOperand.getPredecessors(candidate).equals(preset))
-						.collect(Collectors.toSet());
-				replacements.forEach(x -> mReplacement.put(x, place));
-				// mReplacement.put(replacements, place);
-				if (replacements.size() > 1) {
-					mResult = true;
-					return true;
-				}
+				final Set<Transition<LETTER, PLACE>> preset = mOperand.getPredecessors(candidate);
+				final Set<Transition<LETTER, PLACE>> postset = mOperand.getSuccessors(candidate);
 
+				final Set<PLACE> replacements =
+						candidates.stream().filter(place -> mOperand.getPredecessors(place).equals(preset)
+								&& mOperand.getSuccessors(place).equals(postset)).collect(Collectors.toSet());
+				replacements.forEach(x -> mReplacement.put(x, candidate)); // also maps candidate to itself!
+
+				mResult.addPlace(candidate, mOperand.getInitialPlaces().contains(candidate),
+						replacements.stream().anyMatch(mOperand::isAccepting));
 			}
 		}
-		checked = new HashSet<>();
-		for (final var trans : mOperand.getTransitions()) {
-			final Set<PLACE> preset = trans.getPredecessors();
-			for (final PLACE place : preset) {
-				if (checked.contains(place)) {
-					continue;
-				}
-				checked.add(place);
-				final Set<Transition<LETTER, PLACE>> postset = mOperand.getSuccessors(place);
-				final Set<PLACE> replacements = preset.stream()// .filter(candidate -> candidate != place)
-						.filter(candidate -> mOperand.getSuccessors(candidate).equals(postset))
-						.collect(Collectors.toSet());
-
-				replacements.forEach(x -> mReplacement.put(x, place));
-				// mReplacement.put(replacements, place);
-				if (replacements.size() > 1) {
-					mResult = true;
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
-	// create the new Petri net with reduced number of places
-	// TODO maybe into CopySubnet class
-	private IPetriNet<LETTER, PLACE> updatePetriNet(final IPetriNet<LETTER, PLACE> operand) {
-		final BoundedPetriNet<LETTER, PLACE> res = new BoundedPetriNet<>(mServices, mOperand.getAlphabet(), false);
-		// Add places
-		// TODO maybe directly use a separate list. or directly add them after they have been checked!! or keept this
-		// copying isolated. don't know yet.
-		mReplacement.values().stream().forEach(place -> res.addPlace(place, true, true));// TODO make this correct
+	private PLACE getReplacementPlace(final PLACE place) {
+		return mReplacement.getOrDefault(place, place);
+	}
 
-		// Add transitions...
+	// create the new Petri net with reduced places
+	private void updatePetriNet() {
+		// Add remaining places needed here
+		mOperand.getPlaces().stream().filter(place -> !mReplacement.values().contains(place)).forEach(place -> mResult
+				.addPlace(place, mOperand.getInitialPlaces().contains(place), mOperand.isAccepting(place)));
+
+		// Add transitions
 		for (final var trans : mOperand.getTransitions()) {
-			final var preds = trans.getPredecessors().stream().map(p -> mReplacement.get(p)).distinct()
+			final var preds = trans.getPredecessors().stream().map(p -> getReplacementPlace(p)).distinct()
 					.collect(Collectors.toSet());
-			final var succs =
-					trans.getSuccessors().stream().map(p -> mReplacement.get(p)).distinct().collect(Collectors.toSet());
-			res.addTransition(trans.getSymbol(), ImmutableSet.of(preds), ImmutableSet.of(succs));
+			final var succs = trans.getSuccessors().stream().map(p -> getReplacementPlace(p)).distinct()
+					.collect(Collectors.toSet());
+			mResult.addTransition(trans.getSymbol(), ImmutableSet.of(preds), ImmutableSet.of(succs));
 		}
-		return res;
-	}
-
-	private boolean timeout() {
-		return !mServices.getProgressAwareTimer().continueProcessing();
 	}
 
 	@Override
-	// public BoundedPetriNet<LETTER, PLACE> getResult() {
-	public Boolean getResult() {
-		mLogger.info(mResult);
+	public BoundedPetriNet<LETTER, PLACE> getResult() {
 		return mResult;
 	}
-
-	// @Override
-	// protected IPetriNet<LETTER, PLACE> getOperand() {
-	// return mOperand;
-	// }
-
-	// @Override
-	// public boolean checkResult(final CRSF stateFactory) throws AutomataLibraryException {
-	// mLogger.warn("checkResult not implemented-");
-	// return true;
-	// }
 
 	@Override
 	public String exitMessage() {
