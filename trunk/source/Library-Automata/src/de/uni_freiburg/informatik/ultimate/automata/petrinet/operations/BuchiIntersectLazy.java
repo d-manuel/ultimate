@@ -150,8 +150,10 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 				if (buchiSucc.getLetter().equals(petriSucc.getSymbol())) {
 					final Marking<PLACE> succMarking = node.mMarking.fireTransition(petriSucc);
 					final var nextBuchiState = buchiSucc.getSucc();
-					final Index index = determineIndex(node.mIndex, mPetriNet.isAccepting(succMarking),
-							mBuchiAutomaton.isFinal(node.mState));
+					final boolean petriSuccAccepting =
+							petriSucc.getSuccessors().stream().anyMatch(mPetriNet::isAccepting);
+					final Index index =
+							determineIndex(node.mIndex, petriSuccAccepting, mBuchiAutomaton.isFinal(node.mState));
 					res.add(new Node(succMarking, nextBuchiState, index, buchiSucc.getLetter()));
 				}
 			}
@@ -195,7 +197,7 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		Index mIndex;
 
 		// TODO maybe improve
-		// a letter how we arrived at this node. Letters don't append for multiple incoming transitions. And it is not
+		// a letter how we arrived at this node. Letters don't append for multiple incomping transitions. And it is not
 		// considered for equality. We abstract away from it.
 		private LETTER mLetter;
 
