@@ -45,8 +45,6 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 	private final Map<PLACE, PLACE> mInputQGetQ1 = new HashMap<>();
 	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
 
-	// TODO need to overwrite hashCode(), so I can use a HashSet Here!
-	// Or just delete equals method, if I don't use the letters anymore!
 	private final List<Node> visited = new LinkedList<>();
 
 	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
@@ -110,17 +108,6 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 
 		run_helper(root, currentRun);
 	}
-	/*
-	 * Fully expanded ist jetzt automatisch, wenn keine succ mehr gibt. Muss ich mehr als einmal die succs berechnen?
-	 * Nein, wenn ein Knoten das zweitem mal besucht werden würde brechen wir sofort ab. Daher müssen wir dann auch
-	 * keine successors mehr generieren. Und das ist auch kein Problem, denn wir überprüfen ob wir loop haben schon beim
-	 * hinzufügen der Succesors.
-	 *
-	 * TODO Muss auch noch Transitions und so hinzufügen! TODO Und dafür muss ich das mit den labels noch ausarbeiten
-	 *
-	 *
-	 * We evaluate lasso on adding succs, not on reaching them!
-	 */
 
 	void run_helper(final Node node, final Stack<Node> currentRun) throws PetriNetNot1SafeException {
 		// void run_helper(final Node node) throws PetriNetNot1SafeException {
@@ -144,9 +131,6 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 				mLogger.info(currentRun);
 				mLogger.info(succ);
 				mAcceptingRun = nodeLassoToPetriLasso(currentRun, succ);
-				// TODO WRONG. I cannot return here, as I need to continue with the rest! I can only end the Lasos
-				// Search here!
-				// return;
 				mLogger.info("");
 			}
 
@@ -290,7 +274,6 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 
 		@Override
 		public int hashCode() {
-			// TODO Auto-generated method stub
 			return super.hashCode();
 		}
 	}
@@ -326,10 +309,8 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		boolean firstIteration = true;
 
 		for (final Node node : runOfNodes) {
-			// sequenceOfMarkings.add(node.mMarking);
-			// To the markign resulting form the original Petri net subtrahend suubnet, we also need to add the buchi
+			// To the marking resulting form the original Petri net subtrahend suubnet, we also need to add the buchi
 			// state
-			// TODO is this the correct state or is this the postset already..
 			sequenceOfMarkings
 					.add(new Marking<>(ImmutableSet.of(concatPlaces(node.mMarking.getPlaces(), getBuchiState(node)))));
 
