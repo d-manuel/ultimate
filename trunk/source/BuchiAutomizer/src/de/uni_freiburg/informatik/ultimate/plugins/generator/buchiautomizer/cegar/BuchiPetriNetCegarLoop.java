@@ -103,6 +103,37 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 	}
 
 	@Override
+	// protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction) throws AutomataLibraryException
+	// {
+	// // do both for testing purposes
+	// // automaton-based
+	// final var automaton = new BuchiPetriNet2FiniteAutomaton<>(new AutomataLibraryServices(mServices),
+	// mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
+	// final var result = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIsEmpty<>(
+	// new AutomataLibraryServices(mServices), automaton);
+	// final boolean nwaB = result.getResult();
+	//
+	// // Büchi-Petri net based
+	// final var result2 = new BuchiIsEmpty<>(new AutomataLibraryServices(mServices), abstraction, mPref.eventOrder(),
+	// mPref.cutOffRequiresSameTransition(), true);
+	// final boolean netB = result2.getResult();
+	//
+	// // assert (netB == nwaB);
+	// if (netB != nwaB) {
+	// mLogger.info("There's something wrong");
+	// }
+	// if (!netB) {
+	// if (!nwaB) {
+	// final var counterEx = result.getAcceptingNestedLassoRun();
+	// final PetriNetLassoRun<L, IPredicate> run = result2.getRun();
+	// final var counterEx2 = new NestedLassoRun<>(constructNestedLassoRun(run.getStem()),
+	// constructNestedLassoRun(run.getLoop()));
+	// mCounterexample = counterEx2;
+	// }
+	// // return netB;
+	// }
+	// return nwaB;
+	// }
 	protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction) throws AutomataLibraryException {
 		if (mUseAutomatonForEmptiness) {
 			mLogger.info("use automaton for emptiness check");
@@ -120,6 +151,18 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		final var isempty = new BuchiIsEmpty<>(new AutomataLibraryServices(mServices), abstraction, mPref.eventOrder(),
 				mPref.cutOffRequiresSameTransition(), true);
 		final PetriNetLassoRun<L, IPredicate> run = isempty.getRun();
+		if (run == null) {
+			return true;
+		}
+		mCounterexample =
+				new NestedLassoRun<>(constructNestedLassoRun(run.getStem()), constructNestedLassoRun(run.getLoop()));
+		return false;
+	}
+
+	// overloaded:
+	protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction,
+			final BuchiIntersectLazy<L, IPredicate> buchiIntersectLazy) {
+		final PetriNetLassoRun<L, IPredicate> run = buchiIntersectLazy.getRun();
 		if (run == null) {
 			return true;
 		}

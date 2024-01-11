@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -13,11 +12,14 @@ import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
+import de.uni_freiburg.informatik.ultimate.automata.Word;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.Marking;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
@@ -43,7 +45,13 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 	private final Map<PLACE, PLACE> mInputQGetQ1 = new HashMap<>();
 	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
 
+	// TODO need to overwrite hashCode(), so I can use a HashSet Here!
+	// Or just delete equals method, if I don't use the letters anymore!
+	private final List<Node> visited = new LinkedList<>();
+
 	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+
+	PetriNetLassoRun<LETTER, PLACE> mAcceptingRun;
 
 	public BuchiIntersectLazy(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton)
@@ -94,39 +102,64 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		// starting node
 		final var initialMarking = new Marking<>(ImmutableSet.of(mPetriNet.getInitialPlaces()));
 		final var initialState = mBuchiAutomaton.getInitialStates().iterator().next();
-		final Node initialNode = new Node(initialMarking, initialState, Index.ONE);
 
-		// List of already processed (expanded) nodes
-		final Queue<Node> expanded = new LinkedList<>();
-		// List of nodes needed to process next
-		// final Queue<Node> worklist = new LinkedList<>();
-		final Stack<Node> worklist = new Stack<>();
-		worklist.add(initialNode);
+		final Node root = new Node(initialMarking, initialState, Index.ONE);
 
-		while (!worklist.isEmpty()) {
-			// fetch node
-			final Node currentNode = worklist.pop();
+		final Stack<Node> currentRun = new Stack<>();
+		currentRun.add(root);
 
-			if (expanded.contains(currentNode)) {
-				continue;
-			}
-			expanded.add(currentNode);
-			final List<Node> succs = getSuccessorNodes(currentNode);
-			worklist.addAll(succs);
-			for (final Node succNode : succs) {
-				// Add transitions
-				final ImmutableSet<PLACE> predecessors =
-						ImmutableSet.of(concatPlaces(currentNode.mMarking, getBuchiState(currentNode)));
-				final ImmutableSet<PLACE> successors =
-						ImmutableSet.of(concatPlaces(succNode.mMarking, getBuchiState(succNode)));
+		run_helper(root, currentRun);
+	}
+	/*
+	 * Fully expanded ist jetzt automatisch, wenn keine succ mehr gibt. Muss ich mehr als einmal die succs berechnen?
+	 * Nein, wenn ein Knoten das zweitem mal besucht werden würde brechen wir sofort ab. Daher müssen wir dann auch
+	 * keine successors mehr generieren. Und das ist auch kein Problem, denn wir überprüfen ob wir loop haben schon beim
+	 * hinzufügen der Succesors.
+	 *
+	 * TODO Muss auch noch Transitions und so hinzufügen! TODO Und dafür muss ich das mit den labels noch ausarbeiten
+	 *
+	 *
+	 * We evaluate lasso on adding succs, not on reaching them!
+	 */
 
-				mIntersectionNet.addTransition(succNode.getLetter(), predecessors, successors);
-			}
+	void run_helper(final Node node, final Stack<Node> currentRun) throws PetriNetNot1SafeException {
+		// void run_helper(final Node node) throws PetriNetNot1SafeException {
+		if (visited.contains(node)) {
+			return;
 		}
-		return;
+		visited.add(node);
+		// generate successors on the fly
+		final List<Node> succs = getSuccessorNodes(node);
+		mLogger.info("Current Node:");
+		mLogger.info(node);
+		mLogger.info("Succs");
+		mLogger.info(succs);
+		for (final Node succ : succs) {
+
+			final Transition<LETTER, PLACE> newTransition = addSuccessorTransition(node, succ);
+			succ.mNewPetriPredecessor = newTransition;
+
+			if (currentRun.contains(succ) && isLassoAccepting(currentRun, succ)) {
+				mLogger.info("found accepting run");
+				mLogger.info(currentRun);
+				mLogger.info(succ);
+				mAcceptingRun = nodeLassoToPetriLasso(currentRun, succ);
+				// TODO WRONG. I cannot return here, as I need to continue with the rest! I can only end the Lasos
+				// Search here!
+				// return;
+				mLogger.info("");
+			}
+
+			// TODO is this a pointer? do i need to actually create a new list?
+			final Stack<Node> newRun = (Stack<Node>) currentRun.clone();
+			newRun.push(succ);
+
+			run_helper(succ, newRun);
+		}
+
 	}
 
-	Set<PLACE> concatPlaces(final Marking<PLACE> petriPlaces, final PLACE buchiState) {
+	Set<PLACE> concatPlaces(final Set<PLACE> petriPlaces, final PLACE buchiState) {
 		return Stream.concat(petriPlaces.stream(), Stream.of(buchiState)).collect(Collectors.toSet());
 	}
 
@@ -134,27 +167,42 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		return succNode.mIndex == Index.ONE ? mInputQGetQ1.get(succNode.mState) : mInputQGetQ2.get(succNode.mState);
 	}
 
-	private List<Node> getSuccessorNodes(final Node node) throws PetriNetNot1SafeException {
-		final var candidatePetriSuccs = node.mMarking.stream().flatMap(p -> mPetriNet.getSuccessors(p).stream());
+	// Adds a transition to the intersection net.
+	Transition<LETTER, PLACE> addSuccessorTransition(final Node srcNode, final Node succNode) {
+		// TODO source node nur für buchiState? Kann ich den nicht auch besser übergeben?
+		// Add transitions
+
+		final Set<PLACE> petriPreset = succNode.mOldPetriPredecessor.getPredecessors();
+		final Set<PLACE> petriPostset = succNode.mOldPetriPredecessor.getSuccessors();
+		final LETTER label = succNode.mOldPetriPredecessor.getSymbol();
+		final ImmutableSet<PLACE> predecessors = ImmutableSet.of(concatPlaces(petriPreset, getBuchiState(srcNode)));
+		final ImmutableSet<PLACE> successors = ImmutableSet.of(concatPlaces(petriPostset, getBuchiState(succNode)));
+
+		return mIntersectionNet.addTransition(label, predecessors, successors);
+	}
+
+	private List<Node> getSuccessorNodes(final Node srcNode) throws PetriNetNot1SafeException {
+		final var candidatePetriSuccs = srcNode.mMarking.stream().flatMap(p -> mPetriNet.getSuccessors(p).stream());
 		final Set<Transition<LETTER, PLACE>> enabledPetriSuccs =
-				candidatePetriSuccs.filter(node.mMarking::isTransitionEnabled).collect(Collectors.toSet());
+				candidatePetriSuccs.filter(srcNode.mMarking::isTransitionEnabled).collect(Collectors.toSet());
 
 		final List<OutgoingInternalTransition<LETTER, PLACE>> enabledBuchiSuccs = new ArrayList<>();
 
-		mBuchiAutomaton.internalSuccessors(node.mState).forEach(enabledBuchiSuccs::add);
+		mBuchiAutomaton.internalSuccessors(srcNode.mState).forEach(enabledBuchiSuccs::add);
 
 		final List<Node> res = new LinkedList<>();
 
-		for (final var buchiSucc : enabledBuchiSuccs) {
-			for (final var petriSucc : enabledPetriSuccs) {
-				if (buchiSucc.getLetter().equals(petriSucc.getSymbol())) {
-					final Marking<PLACE> succMarking = node.mMarking.fireTransition(petriSucc);
-					final var nextBuchiState = buchiSucc.getSucc();
-					final boolean petriSuccAccepting =
-							petriSucc.getSuccessors().stream().anyMatch(mPetriNet::isAccepting);
-					final Index index =
-							determineIndex(node.mIndex, petriSuccAccepting, mBuchiAutomaton.isFinal(node.mState));
-					res.add(new Node(succMarking, nextBuchiState, index, buchiSucc.getLetter()));
+		for (final var buchiTrans : enabledBuchiSuccs) {
+			for (final var petriTrans : enabledPetriSuccs) {
+				if (buchiTrans.getLetter().equals(petriTrans.getSymbol())) {
+
+					final Marking<PLACE> succMarking = srcNode.mMarking.fireTransition(petriTrans);
+					final var succBuchiState = buchiTrans.getSucc();
+					final boolean isPetriSuccAccepting =
+							petriTrans.getSuccessors().stream().anyMatch(mPetriNet::isAccepting);
+					final Index succIndex = determineIndex(srcNode.mIndex, isPetriSuccAccepting,
+							mBuchiAutomaton.isFinal(srcNode.mState));
+					res.add(new Node(succMarking, succBuchiState, succIndex, petriTrans));
 				}
 			}
 		}
@@ -196,30 +244,25 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		PLACE mState;
 		Index mIndex;
 
-		// TODO maybe improve
-		// a letter how we arrived at this node. Letters don't append for multiple incomping transitions. And it is not
-		// considered for equality. We abstract away from it.
-		private LETTER mLetter;
+		// a transition how we arrive at this node in the minuend petri net. Letters don't append for multiple incoming
+		// transitions. And it is not considered for equality. We a abstract away from it.
+		Transition<LETTER, PLACE> mOldPetriPredecessor;
 
-		Node(final Marking<PLACE> marking, final PLACE state, final Index index, final LETTER letter) {
+		// Transition of the resulting intersection net.Stored to reconstruct runs!
+		// Maybe setter and getter for it
+		Transition<LETTER, PLACE> mNewPetriPredecessor;
+
+		Node(final Marking<PLACE> marking, final PLACE state, final Index index,
+				final Transition<LETTER, PLACE> predecessor) {
 			mMarking = marking;
 			mState = state;
 			mIndex = index;
-			mLetter = letter;
+			mOldPetriPredecessor = predecessor;
+
 		}
 
 		Node(final Marking<PLACE> marking, final PLACE state, final Index index) {
 			this(marking, state, index, null);
-		}
-
-		Node(final Marking<PLACE> marking, final PLACE state, final int index) {
-			this(marking, state, index == 1 ? Index.ONE : Index.TWO);
-			assert (index == 1 || index == 2);
-		}
-
-		LETTER getLetter() {
-			assert (mLetter != null);
-			return mLetter;
 		}
 
 		@Override
@@ -235,14 +278,78 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 			if (!(obj instanceof BuchiIntersectLazy.Node)) {
 				return false;
 			}
-			// Important: Letter is not considered for equality! It is only used for carrying the information how one
-			// reached this node.
+
+			// Important: The incoming transition is not considered for equality! It is only used for carrying the
+			// information how one reached this node.
 			final Node node = (Node) obj;
 			final boolean b1 = mMarking.equals(node.mMarking);
 			final boolean b2 = mIndex == node.mIndex;
 			final boolean b3 = mState.equals(node.mState);
 			return b1 && b2 && b3;
 		}
+
+		@Override
+		public int hashCode() {
+			// TODO Auto-generated method stub
+			return super.hashCode();
+		}
+	}
+
+	// TODO better way to represent a lasso.
+	// TODO maybe already create it one step earlier
+	boolean isLassoAccepting(final List<Node> lassoRun, final Node hondanode) {
+		final int fromIndex = lassoRun.indexOf(hondanode);
+		final int toIndex = lassoRun.size();
+		final List<Node> loop = lassoRun.subList(fromIndex, toIndex);
+		// TODO maybe seperate function. or maybe do everything with proper states instead of nodes, then we only have
+		// the intersecteionNet cointains it as an accepting state instead of everything with loops and so.
+		final boolean loopContainsAcceptingPlace =
+				loop.stream().anyMatch(node -> node.mIndex == Index.TWO && mBuchiAutomaton.isFinal(node.mState));
+		return loopContainsAcceptingPlace;
+	}
+
+	private PetriNetLassoRun<LETTER, PLACE> nodeLassoToPetriLasso(final Stack<Node> lassoRun, final Node hondanode) {
+		final int hondaIndex = lassoRun.indexOf(hondanode);
+		// TODO hondanode has to be part of both??
+		final List<Node> stem = lassoRun.subList(0, hondaIndex + 1);
+		final List<Node> loop = lassoRun.subList(hondaIndex, lassoRun.size());
+		return new PetriNetLassoRun<>(runOfNodesToPetriNetRun(stem), runOfNodesToPetriNetRun(loop));
+	}
+
+	private PetriNetRun<LETTER, PLACE> runOfNodesToPetriNetRun(final List<Node> runOfNodes) {
+		final List<Marking<PLACE>> sequenceOfMarkings = new LinkedList<>();
+		// TODO there has to be a better solution for appending (iteratively creating) the word!
+		Word<LETTER> word = new Word<LETTER>();
+		// List<LETTER> labels = new LinkedList<>();
+		final List<Transition<LETTER, PLACE>> transitions = new LinkedList<>();
+
+		boolean firstIteration = true;
+
+		for (final Node node : runOfNodes) {
+			// sequenceOfMarkings.add(node.mMarking);
+			// To the markign resulting form the original Petri net subtrahend suubnet, we also need to add the buchi
+			// state
+			// TODO is this the correct state or is this the postset already..
+			sequenceOfMarkings
+					.add(new Marking<>(ImmutableSet.of(concatPlaces(node.mMarking.getPlaces(), getBuchiState(node)))));
+
+			final Transition<LETTER, PLACE> predecessorTransition = node.mNewPetriPredecessor;
+
+			// given that the root node can have no predecessor, we need to check for null pointers.
+			if (!firstIteration) {
+				word = word.concatenate(new Word<>(predecessorTransition.getSymbol()));
+				transitions.add(predecessorTransition);
+			}
+			firstIteration = false;
+		}
+
+		// final Word<LETTER> word = new Word<LETTER>(labels.toArray(new LETTER[0]));
+
+		return new PetriNetRun<>(sequenceOfMarkings, word, transitions);
+	}
+
+	public PetriNetLassoRun<LETTER, PLACE> getRun() {
+		return mAcceptingRun;
 	}
 
 	/**
