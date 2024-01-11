@@ -94,6 +94,10 @@ public class RemoveRedundantBuchi<LETTER, PLACE> extends GeneralOperation<LETTER
 		// Add remaining places needed here
 		mOperand.getPlaces().stream().filter(place -> !mReplacement.values().contains(place)).forEach(place -> mResult
 				.addPlace(place, mOperand.getInitialPlaces().contains(place), mOperand.isAccepting(place)));
+		// TODO eigentlich nur initial palces, sonst wäre die transiton unnötig nochmal anschauen wie in
+		// RemoveRedundantFlow war.
+		// -> ich mach das jetzt einfach mal in getReplacmeentPlace fürs erste.
+		// nein geht nicht, da wir immer erst places, dann transitions hinzufügen müssen!
 
 		// Add transitions
 		for (final var trans : mOperand.getTransitions()) {

@@ -88,6 +88,16 @@ public final class BuchiIsEmpty<LETTER, PLACE>
 		mLogger.info(exitMessage());
 	}
 
+	// public BuchiIsEmpty(final AutomataLibraryServices services,
+	// final IPetriNetTransitionProvider<LETTER, PLACE> operand,
+	// final BuchiIntersect<LETTER, PLACE> buchiIntersect)
+	// throws AutomataOperationCanceledException, PetriNetNot1SafeException {
+	// super(services);
+	// mOperand = operand;
+	// // mRun = buchiIntersect
+	// // this(services, operand, EventOrderEnum.ERV, false, true);
+	// }
+
 	public PetriNetLassoRun<LETTER, PLACE> getRun() {
 		return mRun;
 	}

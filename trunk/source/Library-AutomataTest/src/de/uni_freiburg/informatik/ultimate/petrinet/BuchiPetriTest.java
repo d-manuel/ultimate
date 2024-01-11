@@ -8,7 +8,15 @@ import org.junit.Test;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataOperationCanceledException;
+import de.uni_freiburg.informatik.ultimate.automata.Word;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.NestedWord;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.NestedWordAutomaton;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.VpAlphabet;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiAccepts;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.GetAcceptedLassoWord;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.LassoExtractor;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoRun;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
@@ -142,6 +150,40 @@ public class BuchiPetriTest {
 		checkEmptinessCorrect(abstraction, false);
 
 		reduceAbstraction(petriNet);
+
+	}
+
+	@Test
+	public void testLassoWord() throws AutomataLibraryException {
+		final Set<String> alphabet = Set.of("a", "b", "c", "d", "e");
+		final var buchiAutomaton = new NestedWordAutomaton<>(mServices, new VpAlphabet<>(alphabet), sFactory);
+
+		buchiAutomaton.addState(true, false, "q1");
+		buchiAutomaton.addState(false, false, "q2");
+		buchiAutomaton.addState(false, false, "qx");
+		buchiAutomaton.addState(false, false, "q3");
+		buchiAutomaton.addState(false, true, "q4");
+		buchiAutomaton.addInternalTransition("q1", "a", "q2");
+		buchiAutomaton.addInternalTransition("q2", "b", "qx");
+		buchiAutomaton.addInternalTransition("qx", "b", "q2");
+		buchiAutomaton.addInternalTransition("q2", "c", "q3");
+		buchiAutomaton.addInternalTransition("q3", "d", "q4");
+		buchiAutomaton.addInternalTransition("q4", "e", "q3");
+
+		final var lasso = new GetAcceptedLassoWord<>(mServices, buchiAutomaton);
+		// mLogger.info(lasso.getResult());
+		final var extractor = new LassoExtractor<>(mServices, buchiAutomaton);
+		mLogger.info("all lassos:");
+		mLogger.info(extractor.getResult());
+
+		// final NestedWord stem = NestedWord.nestedWord(new Word<>("a", "b", "b", "c", "d"));
+		// final NestedWord loop = NestedWord.nestedWord(new Word<>("e", "d"));
+		final NestedWord stem = NestedWord.nestedWord(new Word<>("a", "c"));
+		final NestedWord loop = NestedWord.nestedWord(new Word<>("d", "e", "d"));
+		final NestedLassoWord lassoWord = new NestedLassoWord<>(stem, loop);
+		final var buchiAccepts = new BuchiAccepts<String, String>(mServices, buchiAutomaton, lassoWord);
+		mLogger.info("does buchiAutomaton accept this lassoword?");
+		mLogger.info(buchiAccepts.getResult());
 
 	}
 
