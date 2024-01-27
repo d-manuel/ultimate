@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -130,53 +131,49 @@ public class PetriNetUnfolderBuchi<LETTER, PLACE>
 		 */
 		// Using a stack for the backtrack search which behaves like a tree-search (one companion event might have
 		// multiple respective cutoff events, creating multiple branches of search).
-		final ArrayDeque<Pair<List<List<Event<LETTER, PLACE>>>, Event<LETTER, PLACE>>> wordBeingBuilt =
-				new ArrayDeque<>();
-		wordBeingBuilt.add(new Pair<>(new ArrayList<>(), event));
+		final ArrayDeque<Pair<List<Event<LETTER, PLACE>>, Event<LETTER, PLACE>>> worklist = new ArrayDeque<>();
+		worklist.add(new Pair<>(new ArrayList<>(), event));
 		final Set<Event<LETTER, PLACE>> seenEvents = new HashSet<>();
-		while (!wordBeingBuilt.isEmpty()) {
-			final Pair<List<List<Event<LETTER, PLACE>>>, Event<LETTER, PLACE>> nextPair = wordBeingBuilt.pop();
-			final List<Event<LETTER, PLACE>> reversesortedList =
-					nextPair.getSecond().getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
-			Collections.reverse(reversesortedList);
-			final List<Event<LETTER, PLACE>> newList = new ArrayList<>();
-			for (final Event<LETTER, PLACE> event2 : reversesortedList) {
-				if (!event2.isCompanion()) {
-					// adding events we pass through, because they will build the lasso-word.
-					newList.add(0, event2);
+		while (!worklist.isEmpty()) {
+			final Pair<List<Event<LETTER, PLACE>>, Event<LETTER, PLACE>> currentBranch = worklist.pop();
+			final List<Event<LETTER, PLACE>> localConfigEvents =
+					currentBranch.getSecond().getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
+			Collections.reverse(localConfigEvents);
 
-				} else {
-					// event is companion event
-					nextPair.getFirst().add(newList);
+			final Optional<Event<LETTER, PLACE>> optionalFirstBackwardCompanion =
+					localConfigEvents.stream().filter(e -> e.isCompanion()).findFirst();
+			if (!optionalFirstBackwardCompanion.isPresent()) {
+				continue;
+			}
+			final Event<LETTER, PLACE> firstBackwardCompanion = optionalFirstBackwardCompanion.get();
 
-					// Done Found lasso word. Ringschluss erfolgt.
-					if (event2.getCutoffEventsThisIsCompanionTo().contains(event)) {
-						Collections.reverse(nextPair.getFirst());
-						final List<Event<LETTER, PLACE>> configLoopEvents =
-								nextPair.getFirst().stream().flatMap(List::stream).collect(Collectors.toList());
-						final List<Event<LETTER, PLACE>> configStemEvents =
-								event.getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
+			// Collecting events we pass through until the first companion event, because they will build the loop of
+			// the
+			// lasso-word.
+			final var backwardsTraceEvents =
+					localConfigEvents.stream().takeWhile(e -> !e.isCompanion()).collect(Collectors.toList());
+			currentBranch.getFirst().addAll(backwardsTraceEvents);
 
-						if (checkIfLassoConfigurationAccepted(configLoopEvents, configStemEvents)) {
-							return true;
-						}
-					}
-					// Need to continue to find for a loop (Ringschluss).
+			// Done Found lasso word. Ringschluss erfolgt.
+			if (firstBackwardCompanion.getCutoffEventsThisIsCompanionTo().contains(event)) {
+				Collections.reverse(currentBranch.getFirst());
+				final List<Event<LETTER, PLACE>> configLoopEvents = currentBranch.getFirst();
+				// .stream().flatMap(List::stream).collect(Collectors.toList());
+				final List<Event<LETTER, PLACE>> configStemEvents =
+						event.getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
 
-					// New backtrack-tree-path found through another companion event. We don't add event2 to the
-					// list of events because it is not part of the word.
-					for (final Event<LETTER, PLACE> cutoffEvent : event2.getCutoffEventsThisIsCompanionTo()) {
-						if (!seenEvents.add(cutoffEvent)) {
-							// to avoid looping
-							continue;
-						}
-						wordBeingBuilt.add(new Pair<>(new ArrayList<>(nextPair.getFirst()), cutoffEvent));
-					}
-					// ensure we do not consider events in the local configuration of a companion event:
-					break;
-
+				if (checkIfLassoConfigurationAccepted(configLoopEvents, configStemEvents)) {
+					return true;
 				}
 			}
+			// Need to continue to find for a loop (Ringschluss).thus new backwards branching
+			// New backtrack-tree-path found through another companion event.
+
+			firstBackwardCompanion.getCutoffEventsThisIsCompanionTo().stream().filter(e -> !seenEvents.contains(e))
+					.forEach(e -> {
+						seenEvents.add(e);
+						worklist.add(new Pair<>(new ArrayList<>(currentBranch.getFirst()), e));
+					});
 		}
 		return false;
 	}
