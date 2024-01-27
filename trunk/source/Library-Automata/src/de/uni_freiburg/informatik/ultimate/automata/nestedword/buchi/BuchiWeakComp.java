@@ -124,30 +124,28 @@ public class BuchiWeakComp<LETTER, PLACE> extends GeneralOperation<LETTER, PLACE
 			if (DFS(stack) == false) {
 				return false;
 			}
-			;
 		}
 		return true;
 	}
 
 	// Helper Function for the isWeakenizable method
+	// Check for non-accepting cycles.
 	private boolean DFS(final Stack<PLACE> stack) {
 		final PLACE currentPlace = stack.peek();
 		for (final var succTrans : mBuchiAutomatonReachable.internalSuccessors(currentPlace)) {
 			final PLACE neighbor = succTrans.getSucc();
 			if (mBuchiAutomatonReachable.isFinal(neighbor)) {
-				// We only look for nonaccepting cycles. If we encounter an accepting state all subsequently discovered
-				// loops
-				// would have an accepting place
+				// We only look for nona- ccepting cycles. If we encounter an accepting state all subsequently
+				// discovered
+				// loops would have an accepting place
 				continue;
 			}
 			if (stack.contains(neighbor)) {
 				return false; // TODO; we found an nonaccepting loop. SCC is not weakenizable.
-			} else {
-				stack.push(neighbor);
-				if (DFS(stack) == false) {
-					return false;
-				}
-				;
+			}
+			stack.push(neighbor);
+			if (DFS(stack) == false) {
+				return false;
 			}
 		}
 		stack.pop();// backtrack

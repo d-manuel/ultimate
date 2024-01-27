@@ -82,7 +82,7 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 	final boolean mUseBuchiPetriOptimizations;
 	final boolean mUseAutomatonForEmptiness;
 
-	boolean USE_LAZY_INTERSECTION = true;
+	boolean USE_LAZY_INTERSECTION = false;
 
 	public BuchiPetriNetCegarLoop(final IIcfg<?> icfg, final RankVarConstructor rankVarConstructor,
 			final PredicateFactory predicateFactory, final TAPreferences taPrefs,
@@ -159,17 +159,15 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 		return false;
 	}
 
-	// overloaded:
-	protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction,
-			final BuchiIntersectLazy<L, IPredicate> buchiIntersectLazy) {
-		final PetriNetLassoRun<L, IPredicate> run = buchiIntersectLazy.getRun();
-		if (run == null) {
-			return true;
-		}
-		mCounterexample =
-				new NestedLassoRun<>(constructNestedLassoRun(run.getStem()), constructNestedLassoRun(run.getLoop()));
-		return false;
-	}
+	// overloadedLazy<L, IPredicate> buchiIntersectLazy) {
+	// final PetriNetLassoRun<L, IPredicate> run = buchiIntersectLazy.getRun();
+	// if (run == null) {
+	// return true;
+	// }
+	// mCounterexample =
+	// new NestedLassoRun<>(constructNestedLassoRun(run.getStem()), constructNestedLassoRun(run.getLoop()));
+	// return false;
+	// }
 
 	private NestedRun<L, IPredicate> constructNestedLassoRun(final PetriNetRun<L, IPredicate> run) {
 		return new NestedRun<>(NestedWord.nestedWord(run.getWord()), run.getStateSequence().stream()
