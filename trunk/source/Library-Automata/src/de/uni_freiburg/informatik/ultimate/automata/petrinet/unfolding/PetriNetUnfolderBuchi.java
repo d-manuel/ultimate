@@ -148,8 +148,7 @@ public class PetriNetUnfolderBuchi<LETTER, PLACE>
 			final Event<LETTER, PLACE> firstBackwardCompanion = optionalFirstBackwardCompanion.get();
 
 			// Collecting events we pass through until the first companion event, because they will build the loop of
-			// the
-			// lasso-word.
+			// the lasso-word.
 			final var backwardsTraceEvents =
 					localConfigEvents.stream().takeWhile(e -> !e.isCompanion()).collect(Collectors.toList());
 			currentBranch.getFirst().addAll(backwardsTraceEvents);
@@ -158,7 +157,6 @@ public class PetriNetUnfolderBuchi<LETTER, PLACE>
 			if (firstBackwardCompanion.getCutoffEventsThisIsCompanionTo().contains(event)) {
 				Collections.reverse(currentBranch.getFirst());
 				final List<Event<LETTER, PLACE>> configLoopEvents = currentBranch.getFirst();
-				// .stream().flatMap(List::stream).collect(Collectors.toList());
 				final List<Event<LETTER, PLACE>> configStemEvents =
 						event.getLocalConfiguration().getSortedConfiguration(mUnfolding.getOrder());
 
