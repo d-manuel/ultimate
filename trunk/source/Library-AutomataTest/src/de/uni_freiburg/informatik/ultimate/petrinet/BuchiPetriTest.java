@@ -16,7 +16,6 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPet
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDead;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDeadBuchi;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.PetriNetUnfolder;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.PetriNetUnfolder.EventOrderEnum;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.StringFactory;
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
@@ -239,39 +238,112 @@ public class BuchiPetriTest {
 
 	}
 
+	// @Test
+	// public void testingUnfolding() throws AutomataOperationCanceledException, PetriNetNot1SafeException {
+	// final Set<String> alphabet = Set.of("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+	// final BoundedPetriNet<String, String> petriNet = new BoundedPetriNet<>(mServices, alphabet, false);
+	//
+	// petriNet.addPlace("p1", true, false);
+	// petriNet.addPlace("p2", true, false);
+	// petriNet.addPlace("p3", true, false);
+	// petriNet.addPlace("p4", false, false);
+	// petriNet.addPlace("p5", false, false);
+	// petriNet.addPlace("p6", false, false);
+	// petriNet.addPlace("p7", false, false);
+	// petriNet.addPlace("p8", false, false);
+	// petriNet.addPlace("p9", false, false);
+	// petriNet.addPlace("p10", false, false);
+	// petriNet.addPlace("p11", false, false);
+	// petriNet.addTransition("a", ImmutableSet.of(Set.of("p1")), ImmutableSet.of(Set.of("p4")));
+	// petriNet.addTransition("b", ImmutableSet.of(Set.of("p2")), ImmutableSet.of(Set.of("p5")));
+	// petriNet.addTransition("c", ImmutableSet.of(Set.of("p3")), ImmutableSet.of(Set.of("p6")));
+	// petriNet.addTransition("d", ImmutableSet.of(Set.of("p4")), ImmutableSet.of(Set.of("p7")));
+	// petriNet.addTransition("e", ImmutableSet.of(Set.of("p5")), ImmutableSet.of(Set.of("p8")));
+	// petriNet.addTransition("f", ImmutableSet.of(Set.of("p6")), ImmutableSet.of(Set.of("p9")));
+	// petriNet.addTransition("g", ImmutableSet.of(Set.of("p7")), ImmutableSet.of(Set.of("p8")));
+	// petriNet.addTransition("h", ImmutableSet.of(Set.of("p8")), ImmutableSet.of(Set.of("p10")));
+	// petriNet.addTransition("i", ImmutableSet.of(Set.of("p9")), ImmutableSet.of(Set.of("p10")));
+	// petriNet.addTransition("j", ImmutableSet.of(Set.of("p10")), ImmutableSet.of(Set.of("p4")));
+	//
+	// final var buchiIsEmpty = new BuchiIsEmpty<>(mServices, petriNet, EventOrderEnum.KMM, false, true);
+	// // final var isEmpty = new IsEmpty<>(mServices, petriNet);
+	// // final var finitePrefix = new FinitePrefix<>(mServices, petriNet);
+	// final var unfolding = new PetriNetUnfolder<>(mServices, petriNet, EventOrderEnum.DBO, false, false);
+	// mLogger.warn(buchiIsEmpty.getResult());
+	// final var run = buchiIsEmpty.getRun();
+	//
+	// }
+
+	// @Test
+	// public void testingUnfolding2() throws AutomataOperationCanceledException, PetriNetNot1SafeException {
+	// final Set<String> alphabet = Set.of("a", "b", "c", "d", "e", "f", "g");
+	// final BoundedPetriNet<String, String> petriNet = new BoundedPetriNet<>(mServices, alphabet, false);
+	//
+	// petriNet.addPlace("p1", true, false);
+	// petriNet.addPlace("p2", true, false);
+	// petriNet.addPlace("p3", false, false);
+	// petriNet.addPlace("p4", false, false);
+	// petriNet.addPlace("p5", false, false);
+	// petriNet.addPlace("p6", false, false);
+	// petriNet.addPlace("p7", false, false);
+	// petriNet.addTransition("a", ImmutableSet.of(Set.of("p1")), ImmutableSet.of(Set.of("p3")));
+	// petriNet.addTransition("b", ImmutableSet.of(Set.of("p2")), ImmutableSet.of(Set.of("p4")));
+	// petriNet.addTransition("c", ImmutableSet.of(Set.of("p3")), ImmutableSet.of(Set.of("p5")));
+	// petriNet.addTransition("d", ImmutableSet.of(Set.of("p4")), ImmutableSet.of(Set.of("p6")));
+	// petriNet.addTransition("e", ImmutableSet.of(Set.of("p5")), ImmutableSet.of(Set.of("p7")));
+	// petriNet.addTransition("f", ImmutableSet.of(Set.of("p6")), ImmutableSet.of(Set.of("p5")));
+	// petriNet.addTransition("g", ImmutableSet.of(Set.of("p7")), ImmutableSet.of(Set.of("p6")));
+	//
+	// final var buchiIsEmpty = new BuchiIsEmpty<>(mServices, petriNet, EventOrderEnum.ERV, false, true);
+	// // final var isEmpty = new IsEmpty<>(mServices, petriNet);
+	// // final var finitePrefix = new FinitePrefix<>(mServices, petriNet);
+	// mLogger.warn(buchiIsEmpty.getResult());
+	// final var run = buchiIsEmpty.getRun();
+	// // final var unfolding = new PetriNetUnfolder<>(mServices, petriNet, EventOrderEnum.ERV, false, false);
+	//
+	// }
+
 	@Test
-	public void testingUnfolding() throws AutomataOperationCanceledException, PetriNetNot1SafeException {
-		final Set<String> alphabet = Set.of("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+	public void testingUnfolding3() throws AutomataOperationCanceledException, PetriNetNot1SafeException {
+		final Set<String> alphabet = Set.of("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "x", "y", "z");
 		final BoundedPetriNet<String, String> petriNet = new BoundedPetriNet<>(mServices, alphabet, false);
 
-		petriNet.addPlace("p1", true, false);
-		petriNet.addPlace("p2", true, false);
-		petriNet.addPlace("p3", true, false);
+		petriNet.addPlace("p1", false, false);
+		petriNet.addPlace("p2", false, false);
+		petriNet.addPlace("p3", false, false);
 		petriNet.addPlace("p4", false, false);
 		petriNet.addPlace("p5", false, false);
 		petriNet.addPlace("p6", false, false);
 		petriNet.addPlace("p7", false, false);
 		petriNet.addPlace("p8", false, false);
 		petriNet.addPlace("p9", false, false);
-		petriNet.addPlace("p10", false, false);
-		petriNet.addPlace("p11", false, false);
+		petriNet.addPlace("p10", false, true);
+		petriNet.addPlace("p11", true, false);
+		petriNet.addPlace("p13", false, false);
 		petriNet.addTransition("a", ImmutableSet.of(Set.of("p1")), ImmutableSet.of(Set.of("p4")));
 		petriNet.addTransition("b", ImmutableSet.of(Set.of("p2")), ImmutableSet.of(Set.of("p5")));
 		petriNet.addTransition("c", ImmutableSet.of(Set.of("p3")), ImmutableSet.of(Set.of("p6")));
+
 		petriNet.addTransition("d", ImmutableSet.of(Set.of("p4")), ImmutableSet.of(Set.of("p7")));
 		petriNet.addTransition("e", ImmutableSet.of(Set.of("p5")), ImmutableSet.of(Set.of("p8")));
 		petriNet.addTransition("f", ImmutableSet.of(Set.of("p6")), ImmutableSet.of(Set.of("p9")));
+
 		petriNet.addTransition("g", ImmutableSet.of(Set.of("p7")), ImmutableSet.of(Set.of("p8")));
 		petriNet.addTransition("h", ImmutableSet.of(Set.of("p8")), ImmutableSet.of(Set.of("p10")));
-		petriNet.addTransition("i", ImmutableSet.of(Set.of("p9")), ImmutableSet.of(Set.of("p10")));
+		petriNet.addTransition("i", ImmutableSet.of(Set.of("p9")), ImmutableSet.of(Set.of("p13")));
+
 		petriNet.addTransition("j", ImmutableSet.of(Set.of("p10")), ImmutableSet.of(Set.of("p4")));
 
-		final var buchiIsEmpty = new BuchiIsEmpty<>(mServices, petriNet, EventOrderEnum.KMM, false, true);
+		petriNet.addTransition("x", ImmutableSet.of(Set.of("p11")), ImmutableSet.of(Set.of("p1")));
+		petriNet.addTransition("y", ImmutableSet.of(Set.of("p11")), ImmutableSet.of(Set.of("p2")));
+		petriNet.addTransition("z", ImmutableSet.of(Set.of("p11")), ImmutableSet.of(Set.of("p3")));
+
+		final var buchiIsEmpty = new BuchiIsEmpty<>(mServices, petriNet, EventOrderEnum.ERV, false, true);
 		// final var isEmpty = new IsEmpty<>(mServices, petriNet);
 		// final var finitePrefix = new FinitePrefix<>(mServices, petriNet);
-		final var unfolding = new PetriNetUnfolder<>(mServices, petriNet, EventOrderEnum.DBO, false, false);
 		mLogger.warn(buchiIsEmpty.getResult());
 		final var run = buchiIsEmpty.getRun();
+		// final var unfolding = new PetriNetUnfolder<>(mServices, petriNet, EventOrderEnum.DBO, false, false);
 
 	}
 
