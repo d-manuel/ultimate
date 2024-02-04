@@ -127,38 +127,4 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 	public IPetriNet<LETTER, PLACE> getResult() {
 		return mIntersectionNet;
 	}
-
-	// /**
-	// *
-	// */
-	// @SuppressWarnings("unchecked")
-	// @Override
-	// public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
-	// throws AutomataLibraryException {
-	// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> operandAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-	// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mPetriNet)).getResult();
-	// final INwaOutgoingLetterAndTransitionProvider<LETTER, PLACE> resultAsNwa = (new BuchiPetriNet2FiniteAutomaton<>(
-	// mServices, stateFactory, (IBlackWhiteStateFactory<PLACE>) stateFactory, mIntersectionNet)).getResult();
-	//
-	// final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection = new
-	// de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(
-	// mServices, (IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomaton).getResult();
-	//
-	// final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
-	// (INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);
-	// if (!isSubset.getResult()) {
-	// final NestedLassoWord<LETTER> ctx = isSubset.getCounterexample().getNestedLassoWord();
-	// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-	// logger.error("Intersection recognizes incorrect word : " + ctx);
-	//
-	// }
-	// final IsIncludedBuchi<LETTER, PLACE> isSuperset = new IsIncludedBuchi<>(mServices,
-	// (INwaInclusionStateFactory<PLACE>) stateFactory, automatonIntersection, resultAsNwa);
-	// if (!isSuperset.getResult()) {
-	// final NestedLassoWord<LETTER> ctx = isSuperset.getCounterexample().getNestedLassoWord();
-	// final ILogger logger = mServices.getLoggingService().getLogger(PetriNetUtils.class);
-	// logger.error("Intersection not recognizing word of correct intersection : " + ctx);
-	// }
-	// return isSubset.getResult() && isSuperset.getResult();
-	// }
 }
