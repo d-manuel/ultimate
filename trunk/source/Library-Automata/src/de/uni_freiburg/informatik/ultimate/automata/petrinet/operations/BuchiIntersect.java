@@ -29,8 +29,6 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  */
 
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
@@ -76,7 +74,6 @@ public class BuchiIntersect<LETTER, PLACE>
 	private static final boolean STEM_OPTIMIZATION = true;
 	private static final boolean SELF_LOOP_OPTIMIZATION = false;
 
-	private static final boolean WEAK_AUTOMATON_OPTIMIZATION = false;
 	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
 
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
@@ -149,29 +146,6 @@ public class BuchiIntersect<LETTER, PLACE>
 				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 				return;
 			}
-			if (WEAK_AUTOMATON_OPTIMIZATION) {
-				// we need a NestedWordAutomatonReachableStates for this
-				try {
-					final NestedWordAutomatonReachableStates<LETTER, PLACE> buchiAutomatonReachable =
-							new RemoveUnreachable<>(mServices, mBuchiAutomaton).getResult();
-
-					final BuchiWeakComp<LETTER, PLACE> buchiWeakComp = new BuchiWeakComp<>(mServices,
-							mLabeledBuchiPlaceFactory, mPetriNet, buchiAutomatonReachable);
-
-					if (buchiWeakComp.isWeak()) {
-						final BuchiIntersectWeakAutomaton<LETTER, PLACE> intersection =
-								new BuchiIntersectWeakAutomaton<LETTER, PLACE>(mServices, mLabeledBuchiPlaceFactory,
-										mPetriNet, mBuchiAutomaton, buchiWeakComp.getResult());
-
-						mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-						return;
-					}
-
-				} catch (final AutomataOperationCanceledException e) {
-					e.printStackTrace();
-					return;
-				}
-			}
 			if (SELF_LOOP_OPTIMIZATION) {
 				final BuchiIntersectDefault<LETTER, PLACE> intersection = new BuchiIntersectDefault<>(mServices,
 						mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, SELF_LOOP_OPTIMIZATION);
@@ -231,35 +205,6 @@ public class BuchiIntersect<LETTER, PLACE>
 			e.printStackTrace();
 			return false;
 		}
-	}
-
-	public static <LETTER, PLACE> boolean isWeakAutomaton(final AutomataLibraryServices services,
-			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
-		try {
-			final NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
-					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
-			final AutomatonSccComputation<LETTER, PLACE> sccComp =
-					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting,
-							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
-			// Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
-			final Stream<StronglyConnectedComponent<PLACE>> sccsStream = sccComp.getBalls().stream();
-			final Set<StronglyConnectedComponent<PLACE>> sccs = new HashSet<>();
-			sccsStream.forEach(sccs::add);
-			for (final var scc : sccs) {
-				final boolean isAcceptingSCC = scc.getNodes().stream()
-						.allMatch(node -> mBuchiAutomatonAccepting.getFinalStates().contains(node));
-				final boolean isNonAcceptingScc = scc.getNodes().stream()
-						.allMatch(node -> !mBuchiAutomatonAccepting.getFinalStates().contains(node));
-				if (!isAcceptingSCC && !isNonAcceptingScc) {// accepting SCC has nonaccepting cycle or nonaccepting SCC
-															// has an accepting state.
-					return false;
-				}
-			}
-		} catch (final AutomataOperationCanceledException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
 	}
 
 	@Override
