@@ -75,6 +75,7 @@ public class BuchiIntersect<LETTER, PLACE>
 	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
 	private static final boolean STEM_OPTIMIZATION = true;
 	private static final boolean SELF_LOOP_OPTIMIZATION = false;
+
 	private static final boolean WEAK_AUTOMATON_OPTIMIZATION = false;
 	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
 
@@ -107,13 +108,13 @@ public class BuchiIntersect<LETTER, PLACE>
 
 		executeIntersection();
 		mLogger.info(exitMessage());
+
 	}
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
 			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton)
 			throws AutomataOperationCanceledException {
 		this(services, factory, petriNet, buchiAutomaton, false, true);
-		// TODO default args
 	}
 
 	@SuppressWarnings("unused")

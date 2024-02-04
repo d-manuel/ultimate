@@ -186,22 +186,6 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 			final boolean succAccepting) {
 		for (final PLACE bPlace : mBuchiAutomaton.getStates()) {
 
-			// WRONG: Minimization
-			// TODO DELETE OR CORRECT
-			// check if bPlace as incoming transition from an accepting state or is initial. otherwise it can never get
-			// a token in the intersection
-			// if (!mBuchiAutomaton.isInitial(bPlace)) {
-			// boolean predAccepting = false;
-			// for (var predTrans : mBuchiAutomaton.internalPredecessors(bPlace)) {
-			// if (mBuchiAutomaton.isFinal(predTrans.getPred())) {
-			// predAccepting = true;
-			// break;
-			// }
-			// }
-			// if (!predAccepting)
-			// return;
-			// }
-
 			for (final OutgoingInternalTransition<LETTER, PLACE> bTransition : mBuchiAutomaton
 					.internalSuccessors(bPlace, label)) {
 				final Set<PLACE> intersectionPredecessors = new HashSet<>(preset);
@@ -223,7 +207,7 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 						ImmutableSet.of(intersectionSuccessors));
 			}
 		}
-	};
+	}
 	// -------------------------------------------
 
 	private final void addPlacesToIntersectionNet() {
