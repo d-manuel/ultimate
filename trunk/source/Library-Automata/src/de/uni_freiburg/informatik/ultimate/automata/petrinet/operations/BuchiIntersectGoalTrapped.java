@@ -81,6 +81,18 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		mLogger.info(exitMessage());
 	}
 
+	// Check if a Büchi Automaton is an Goal Trapped
+	public static <LETTER, PLACE> boolean isGoalTrapped(final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
+		for (final var x : buchiAutomaton.getFinalStates()) {
+			for (final var y : buchiAutomaton.internalSuccessors(x)) {
+				if (!buchiAutomaton.getFinalStates().contains(y.getSucc())) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	private final void constructIntersection() {
 		addPlaces();
 		addTransitions();

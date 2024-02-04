@@ -28,31 +28,23 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  * to convey the resulting work.
  */
 
-import java.util.Collection;
-import java.util.stream.Stream;
-
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataOperationCanceledException;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
-import de.uni_freiburg.informatik.ultimate.automata.nestedword.AutomatonSccComputation;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaOutgoingLetterAndTransitionProvider;
-import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiWeakComp;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
-import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.RemoveUnreachable;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
-import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
 
 /**
  * Abstract class for the intersection of a Büchi-Petri Net and a Büchi automaton.
@@ -119,26 +111,27 @@ public class BuchiIntersect<LETTER, PLACE>
 		if (mUseOptimizations) {
 			mLogger.info("use intersection optimizations");
 			// the all goal optimization only makes sense in the first iteration
-			if (ALL_ACCEPTING_NET_OPTIMIZATION && mFirstIteration && isAllAcceptingNet(mPetriNet)) {
+			if (ALL_ACCEPTING_NET_OPTIMIZATION && mFirstIteration
+					&& BuchiIntersectAllAcceptingtNet.isAllAcceptingNet(mPetriNet)) {
 				final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
 						new BuchiIntersectAllAcceptingtNet<>(mServices, mPetriNet, mBuchiAutomaton);
 				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 				return;
 			}
-			if (GOAL_TRAP_OPTIMIZATION && isGoalTrapped()) {
+			if (GOAL_TRAP_OPTIMIZATION && BuchiIntersectGoalTrapped.isGoalTrapped(mBuchiAutomaton)) {
 				final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection = new BuchiIntersectGoalTrapped<>(mServices,
 						mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
 				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 				return;
 			}
-			if (ALL_GOAL_AUTOMATON_OPTIMIZATION && isAllGoalAutomaton(mBuchiAutomaton)) {
+			if (ALL_GOAL_AUTOMATON_OPTIMIZATION && BuchiIntersectAllGoalAutomaton.isAllGoalAutomaton(mBuchiAutomaton)) {
 				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
 						new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
 				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
 				return;
 			}
 			if (INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION
-					&& isInherentlyAllGoalAutomaton(mServices, mBuchiAutomaton)) {
+					&& BuchiIntersectAllGoalAutomaton.isInherentlyAllGoalAutomaton(mServices, mBuchiAutomaton)) {
 				// apart from checking a different condition we can create the same intersection as with allGoal
 				// automata!!!
 				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
@@ -163,48 +156,6 @@ public class BuchiIntersect<LETTER, PLACE>
 		final BuchiIntersectDefault<LETTER, PLACE> intersection =
 				new BuchiIntersectDefault<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, false);
 		mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-	}
-
-	// -------------------------------------------
-
-	public static <LETTER, PLACE> boolean isAllGoalAutomaton(final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
-		final Stream<PLACE> states = buchiAutomaton.getStates().stream();
-		return states.allMatch(state -> buchiAutomaton.getFinalStates().contains(state));
-	}
-
-	public static <LETTER, PLACE> boolean isAllAcceptingNet(final IPetriNet<LETTER, PLACE> petriNet) {
-		final Stream<Transition<LETTER, PLACE>> transitions = petriNet.getTransitions().stream();
-		return transitions.allMatch(trans -> trans.getSuccessors().stream().anyMatch(petriNet::isAccepting));
-	}
-
-	public boolean isGoalTrapped() {
-		for (final var x : mBuchiAutomaton.getFinalStates()) {
-			for (final var y : mBuchiAutomaton.internalSuccessors(x)) {
-				if (!mBuchiAutomaton.getFinalStates().contains(y.getSucc())) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
-	public static <LETTER, PLACE> boolean isInherentlyAllGoalAutomaton(final AutomataLibraryServices services,
-			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) {
-		try {
-			final NestedWordAutomatonReachableStates<LETTER, PLACE> mBuchiAutomatonAccepting =
-					new RemoveUnreachable<>(services, buchiAutomaton).getResult();
-			final AutomatonSccComputation<LETTER, PLACE> sccComp =
-					new AutomatonSccComputation<>(services, mBuchiAutomatonAccepting,
-							mBuchiAutomatonAccepting.getStates(), mBuchiAutomatonAccepting.getStates());
-			final Collection<StronglyConnectedComponent<PLACE>> sccs = sccComp.getBalls();
-			final BuchiWeakComp<LETTER, PLACE> weakComp =
-					new BuchiWeakComp<>(services, null, null, mBuchiAutomatonAccepting);
-			return sccs.stream().allMatch(weakComp::isWeakenizable);
-
-		} catch (final AutomataOperationCanceledException e) {
-			e.printStackTrace();
-			return false;
-		}
 	}
 
 	@Override
