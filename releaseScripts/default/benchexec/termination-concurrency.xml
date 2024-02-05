@@ -2,8 +2,7 @@
 <benchmark tool="ultimateautomizer" memlimit="8GB" timelimit="300" hardtimelimit="320" cpuCores="2">
 
   <option name="--force-no-wrapper" />
-  <option name="-tc">../../../trunk/examples/toolchains/BuchiAutomizerCInline.xml</option>
-
+  
   <rundefinition name="BUCHI_AUTOMATON">
     <option name="-s">../../../trunk/examples/settings/default/automizer/svcomp-Termination-32bit-Automizer_Default.epf</option>
     <option name="--buchiautomizer.automaton.type.for.concurrent.programs">BUCHI_AUTOMATON</option>
@@ -20,15 +19,31 @@
     <option name="--buchiautomizer.use.buchi.petri.net.intersection.optimizations">true</option>
     <option name="--buchiautomizer.use.automata.for.buchi.petri.net.emptiness.check">true</option>
   </rundefinition>
+  
+  <rundefinition name="BUCHI_PETRI_NET-intersection_optimized">
+    <option name="-s">../../../trunk/examples/settings/default/automizer/svcomp-Termination-32bit-Automizer_Default.epf</option>
+    <option name="--buchiautomizer.automaton.type.for.concurrent.programs">BUCHI_PETRI_NET</option>
+    <option name="--buchiautomizer.use.buchi.petri.net.intersection.optimizations">true</option>
+    <option name="--buchiautomizer.use.automata.for.buchi.petri.net.emptiness.check">false</option>
+  </rundefinition>
+  
+    <rundefinition name="BUCHI_PETRI_NET-automaton_emptiness">
+    <option name="-s">../../../trunk/examples/settings/default/automizer/svcomp-Termination-32bit-Automizer_Default.epf</option>
+    <option name="--buchiautomizer.automaton.type.for.concurrent.programs">BUCHI_PETRI_NET</option>
+    <option name="--buchiautomizer.use.buchi.petri.net.intersection.optimizations">false</option>
+    <option name="--buchiautomizer.use.automata.for.buchi.petri.net.emptiness.check">true</option>
+  </rundefinition>
 
   <tasks name="SVCOMP">
     <includesfile>../../../trunk/examples/svcomp/ConcurrencySafety-Main.set</includesfile>
     <propertyfile>../../../trunk/examples/svcomp/properties/termination.prp</propertyfile>
+	<option name="-tc">../../../trunk/examples/toolchains/BuchiAutomizerCInline.xml</option>
   </tasks>
 
   <tasks name="Ultimate">
     <includesfile>../../../trunk/examples/concurrency-termination-bpl.set</includesfile>
     <propertyfile>../../../trunk/examples/svcomp/properties/termination.prp</propertyfile>
+     <option name="-tc">../../../trunk/examples/toolchains/BuchiAutomizerBplInline.xml</option>
   </tasks>
   
   <resultfiles></resultfiles>
