@@ -113,7 +113,6 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 
 					final var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
 							ImmutableSet.of(successors));
-					mLogger.debug("Added transition " + Utils.transitionToString(trans1));
 				}
 			}
 		}

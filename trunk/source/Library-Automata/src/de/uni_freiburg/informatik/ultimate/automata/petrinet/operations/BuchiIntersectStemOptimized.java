@@ -187,7 +187,6 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors), ImmutableSet.of(successors));
-		mLogger.debug("Added stem transition " + Utils.transitionToString(trans_1));
 	}
 
 	private final void syncToGoalTransition(final Transition<LETTER, PLACE> petriTransition,
@@ -225,10 +224,8 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors1));
-		mLogger.debug("Added goal transition " + Utils.transitionToString(trans_1));
 		final var trans_2 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2), ImmutableSet.of(successors2));
-		mLogger.debug("Added goal transition " + Utils.transitionToString(trans_2));
 	}
 
 	@Override

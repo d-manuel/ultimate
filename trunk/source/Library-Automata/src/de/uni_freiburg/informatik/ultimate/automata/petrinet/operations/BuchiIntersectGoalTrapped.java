@@ -150,7 +150,6 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors), ImmutableSet.of(successors));
-		mLogger.info("Added stem transition " + Utils.transitionToString(trans_1));
 	}
 
 	private final void syncToGoalTransition(final Transition<LETTER, PLACE> petriTransition,
@@ -175,10 +174,8 @@ public class BuchiIntersectGoalTrapped<LETTER, PLACE>
 		predecessors2.add(mInputQGetQ2.get(buchiPredecessor)); // F5 i=2
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors));
-		mLogger.info("Added goal transition " + Utils.transitionToString(trans_1));
 		final var trans_2 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2), ImmutableSet.of(successors));
-		mLogger.info("Added goal transition " + Utils.transitionToString(trans_2));
 	}
 
 	@Override

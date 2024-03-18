@@ -142,7 +142,6 @@ public class BuchiIntersectAllGoalAutomaton<LETTER, PLACE>
 
 					final var trans1 = mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors),
 							ImmutableSet.of(successors));
-					mLogger.info("Added transition " + Utils.transitionToString(trans1));
 				}
 			}
 		}
