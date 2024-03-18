@@ -209,13 +209,6 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		successors1.add((petriSuccAccepting && buchiSuccInScc) ? inputQGetQ2(buchiTransition.getSucc())
 				: inputQGetQ1(buchiTransition.getSucc()));
 
-		if (checkContainsNull(predecessors1)) {
-			mLogger.error("bug here");
-		}
-		if (checkContainsNull(successors1)) {
-			mLogger.error("bug here");
-		}
-
 		// Transition 2 index 2 to Y
 		final Set<PLACE> predecessors2 = new HashSet<>();
 		predecessors2.addAll(petriTransition.getPredecessors());
@@ -228,12 +221,7 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		// accepting Buchi state.
 		successors2.add((buchiSuccInScc && !buchiPredAccepting) ? inputQGetQ2(buchiTransition.getSucc())
 				: inputQGetQ1(buchiTransition.getSucc()));
-		if (checkContainsNull(predecessors2)) {
-			mLogger.error("bug here");
-		}
-		if (checkContainsNull(successors2)) {
-			mLogger.error("bug here");
-		}
+		// successors2.add(inputQGetQ1(buchiTransition.getSucc()));
 
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors1));
@@ -242,18 +230,6 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors2), ImmutableSet.of(successors2));
 		mLogger.debug("Added goal transition " + Utils.transitionToString(trans_2));
 	}
-
-	// ------------------------------
-	// For Debugging:
-	boolean checkTransition(final Transition<LETTER, PLACE> trans) {
-		return (trans.getPredecessors().contains(null) || trans.getSuccessors().contains(null));
-	}
-
-	boolean checkContainsNull(final Set<PLACE> places) {
-		return places.contains(null);
-	}
-
-	// ------------------------------
 
 	@Override
 	public String startMessage() {

@@ -311,3 +311,6 @@ trunk/examples/concurrent/bpl/weaver-benchmarks/weaver
 
 trunk/source/WebsiteStatic/bootstrap_dev/node_modules/
 trunk/source/WebsiteStatic/config/config.js
+/myExamples/intermediateResults/*
+/myExamples/*
+TODO.txt

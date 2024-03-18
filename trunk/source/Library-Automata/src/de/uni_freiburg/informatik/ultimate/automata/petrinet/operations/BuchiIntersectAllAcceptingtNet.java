@@ -28,7 +28,6 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
@@ -74,8 +73,8 @@ public class BuchiIntersectAllAcceptingtNet<LETTER, PLACE>
 
 	// Check if a Büchi-Petri Net is All Accepting (every transition is accepting = fires into an accepting place)
 	public static <LETTER, PLACE> boolean isAllAcceptingNet(final IPetriNet<LETTER, PLACE> petriNet) {
-		final Stream<Transition<LETTER, PLACE>> transitions = petriNet.getTransitions().stream();
-		return transitions.allMatch(trans -> trans.getSuccessors().stream().anyMatch(petriNet::isAccepting));
+		final Set<Transition<LETTER, PLACE>> transitions = petriNet.getTransitions();
+		return transitions.stream().allMatch(trans -> trans.getSuccessors().stream().anyMatch(petriNet::isAccepting));
 	}
 
 	private final void constructIntersection() {

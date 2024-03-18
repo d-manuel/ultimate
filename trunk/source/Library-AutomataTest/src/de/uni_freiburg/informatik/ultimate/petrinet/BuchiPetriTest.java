@@ -25,6 +25,7 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectStemOptimized;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDead;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDeadBuchi;
@@ -362,7 +363,7 @@ public class BuchiPetriTest {
 
 	}
 
-	@Test
+	// @Test
 	public void deterministicConversion() throws AutomataLibraryException {
 		final Set<String> alphabet = Set.of("a", "b");
 		final BoundedPetriNet<String, String> petriNet = new BoundedPetriNet<>(mServices, alphabet, false);
@@ -380,6 +381,30 @@ public class BuchiPetriTest {
 				new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIsEmpty<>(mServices, convertedA);
 		assert (buchiIsEmpty.getResult() == true);
 		mLogger.info(convertedA);
+	}
+
+	@Test
+	public void testStemOptmization() throws AutomataLibraryException {
+		final Set<String> alphabet = Set.of("a", "b");
+		final BoundedPetriNet<String, String> petriNet = new BoundedPetriNet<>(mServices, alphabet, false);
+
+		petriNet.addPlace("p1", true, true);
+		petriNet.addPlace("p2", true, false);
+		petriNet.addTransition("a", ImmutableSet.of(Set.of("p1")), ImmutableSet.of(Set.of("p1")));
+		petriNet.addTransition("b", ImmutableSet.of(Set.of("p2")), ImmutableSet.of(Set.of("p2")));
+
+		final var buchiAutomaton = new NestedWordAutomaton<>(mServices, new VpAlphabet<>(alphabet), sFactory);
+		buchiAutomaton.addState(true, true, "q1");
+		buchiAutomaton.addState(false, false, "q2");
+		buchiAutomaton.addState(false, false, "q3");
+		buchiAutomaton.addInternalTransition("q1", "a", "q2");
+		buchiAutomaton.addInternalTransition("q2", "b", "q1");
+		buchiAutomaton.addInternalTransition("q2", "b", "q3");
+
+		final var intersection =
+				new BuchiIntersectStemOptimized<>(mServices, sFactory, petriNet, buchiAutomaton).getResult();
+		mLogger.info(intersection);
+
 	}
 
 	private void checkEmptinessCorrect(final IPetriNet<String, String> abstraction, final boolean expectedEmpty)

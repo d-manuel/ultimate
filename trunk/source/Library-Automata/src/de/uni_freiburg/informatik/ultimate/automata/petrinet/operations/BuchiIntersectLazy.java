@@ -12,14 +12,12 @@ import java.util.stream.Stream;
 
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
-import de.uni_freiburg.informatik.ultimate.automata.Word;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.Marking;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
@@ -126,13 +124,13 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 			final Transition<LETTER, PLACE> newTransition = addSuccessorTransition(node, succ);
 			succ.mNewPetriPredecessor = newTransition;
 
-			if (currentRun.contains(succ) && isLassoAccepting(currentRun, succ)) {
-				mLogger.info("found accepting run");
-				mLogger.info(currentRun);
-				mLogger.info(succ);
-				mAcceptingRun = nodeLassoToPetriLasso(currentRun, succ);
-				mLogger.info("");
-			}
+			// if (currentRun.contains(succ) && isLassoAccepting(currentRun, succ)) {
+			// mLogger.info("found accepting run");
+			// mLogger.info(currentRun);
+			// mLogger.info(succ);
+			// mAcceptingRun = nodeLassoToPetriLasso(currentRun, succ);
+			// mLogger.info("");
+			// }
 
 			// TODO is this a pointer? do i need to actually create a new list?
 			final Stack<Node> newRun = (Stack<Node>) currentRun.clone();
@@ -291,43 +289,43 @@ public class BuchiIntersectLazy<LETTER, PLACE>
 		return loopContainsAcceptingPlace;
 	}
 
-	private PetriNetLassoRun<LETTER, PLACE> nodeLassoToPetriLasso(final Stack<Node> lassoRun, final Node hondanode) {
-		final int hondaIndex = lassoRun.indexOf(hondanode);
-		// TODO hondanode has to be part of both??
-		final List<Node> stem = lassoRun.subList(0, hondaIndex + 1);
-		final List<Node> loop = lassoRun.subList(hondaIndex, lassoRun.size());
-		return new PetriNetLassoRun<>(runOfNodesToPetriNetRun(stem), runOfNodesToPetriNetRun(loop));
-	}
+	// private PetriNetLassoRun<LETTER, PLACE> nodeLassoToPetriLasso(final Stack<Node> lassoRun, final Node hondanode) {
+	// final int hondaIndex = lassoRun.indexOf(hondanode);
+	// // TODO hondanode has to be part of both??
+	// final List<Node> stem = lassoRun.subList(0, hondaIndex + 1);
+	// final List<Node> loop = lassoRun.subList(hondaIndex, lassoRun.size());
+	// return new PetriNetLassoRun<>(runOfNodesToPetriNetRun(stem), runOfNodesToPetriNetRun(loop));
+	// }
 
-	private PetriNetRun<LETTER, PLACE> runOfNodesToPetriNetRun(final List<Node> runOfNodes) {
-		final List<Marking<PLACE>> sequenceOfMarkings = new LinkedList<>();
-		// TODO there has to be a better solution for appending (iteratively creating) the word!
-		Word<LETTER> word = new Word<LETTER>();
-		// List<LETTER> labels = new LinkedList<>();
-		final List<Transition<LETTER, PLACE>> transitions = new LinkedList<>();
-
-		boolean firstIteration = true;
-
-		for (final Node node : runOfNodes) {
-			// To the marking resulting form the original Petri net subtrahend suubnet, we also need to add the buchi
-			// state
-			sequenceOfMarkings
-					.add(new Marking<>(ImmutableSet.of(concatPlaces(node.mMarking.getPlaces(), getBuchiState(node)))));
-
-			final Transition<LETTER, PLACE> predecessorTransition = node.mNewPetriPredecessor;
-
-			// given that the root node can have no predecessor, we need to check for null pointers.
-			if (!firstIteration) {
-				word = word.concatenate(new Word<>(predecessorTransition.getSymbol()));
-				transitions.add(predecessorTransition);
-			}
-			firstIteration = false;
-		}
-
-		// final Word<LETTER> word = new Word<LETTER>(labels.toArray(new LETTER[0]));
-
-		return new PetriNetRun<>(sequenceOfMarkings, word, transitions);
-	}
+	// private PetriNetRun<LETTER, PLACE> runOfNodesToPetriNetRun(final List<Node> runOfNodes) {
+	// final List<Marking<PLACE>> sequenceOfMarkings = new LinkedList<>();
+	// // TODO there has to be a better solution for appending (iteratively creating) the word!
+	// Word<LETTER> word = new Word<LETTER>();
+	// // List<LETTER> labels = new LinkedList<>();
+	// final List<Transition<LETTER, PLACE>> transitions = new LinkedList<>();
+	//
+	// boolean firstIteration = true;
+	//
+	// for (final Node node : runOfNodes) {
+	// // To the marking resulting form the original Petri net subtrahend suubnet, we also need to add the buchi
+	// // state
+	// sequenceOfMarkings
+	// .add(new Marking<>(ImmutableSet.of(concatPlaces(node.mMarking.getPlaces(), getBuchiState(node)))));
+	//
+	// final Transition<LETTER, PLACE> predecessorTransition = node.mNewPetriPredecessor;
+	//
+	// // given that the root node can have no predecessor, we need to check for null pointers.
+	// if (!firstIteration) {
+	// word = word.concatenate(new Word<>(predecessorTransition.getSymbol()));
+	// transitions.add(predecessorTransition);
+	// }
+	// firstIteration = false;
+	// }
+	//
+	// // final Word<LETTER> word = new Word<LETTER>(labels.toArray(new LETTER[0]));
+	//
+	// return new PetriNetRun<>(sequenceOfMarkings, word, transitions);
+	// }
 
 	public PetriNetLassoRun<LETTER, PLACE> getRun() {
 		return mAcceptingRun;

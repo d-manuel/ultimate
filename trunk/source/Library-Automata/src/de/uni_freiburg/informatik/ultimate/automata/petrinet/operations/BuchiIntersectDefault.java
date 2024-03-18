@@ -247,11 +247,13 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 	private final void addStateOneAndTwoTransition(final Transition<LETTER, PLACE> petriTransition,
 			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final PLACE buchiPredecessor) {
 		Set<PLACE> predecessorSet = getTransitionPredecessors(petriTransition, buchiPredecessor, true);
-		Set<PLACE> successorSet = getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, true);
+		Set<PLACE> successorSet =
+				getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, true, buchiPredecessor);
 		mIntersectionNet.addTransition(petriTransition.getSymbol(), ImmutableSet.of(predecessorSet),
 				ImmutableSet.of(successorSet));
 		predecessorSet = getTransitionPredecessors(petriTransition, buchiPredecessor, false);
-		successorSet = getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, false);
+		successorSet =
+				getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, false, buchiPredecessor);
 		mIntersectionNet.addTransition(petriTransition.getSymbol(), ImmutableSet.of(predecessorSet),
 				ImmutableSet.of(successorSet));
 	}
@@ -270,12 +272,12 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 
 	private final Set<PLACE> getTransitionSuccessors(final Transition<LETTER, PLACE> petriTransition,
 			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final Set<PLACE> predecessorSet,
-			final boolean mBuildingStateOneTransition) {
+			final boolean mBuildingStateOneTransition, final PLACE buchiPredecessor) {
 		final Set<PLACE> successorSet = new HashSet<>(petriTransition.getSuccessors());
 		if (mBuildingStateOneTransition) {
 			successorSet.add(getQSuccesorForStateOneTransition(petriTransition, buchiTransition));
 		} else {
-			successorSet.add(getQSuccesorForStateTwoTransition(predecessorSet, buchiTransition));
+			successorSet.add(getQSuccesorForStateTwoTransition(predecessorSet, buchiTransition, buchiPredecessor));
 		}
 
 		return successorSet;
@@ -292,13 +294,18 @@ public class BuchiIntersectDefault<LETTER, PLACE>
 	}
 
 	private PLACE getQSuccesorForStateTwoTransition(final Set<PLACE> predecessorSet,
-			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition) {
+			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final PLACE buchiPredecessor) {
 		for (final PLACE place : predecessorSet) {
 			if (mInputQ2GetQ.containsKey(place) && mBuchiAutomaton.getFinalStates().contains(mInputQ2GetQ.get(place))) {
+				mLogger.info(place);
 				return mInputQGetQ1.get(buchiTransition.getSucc());
 			}
 		}
+		// if (mBuchiAutomaton.getFinalStates().contains(buchiPredecessor)) {
+		// return mInputQGetQ1.get(buchiTransition.getSucc());
+		// }
 		return mInputQGetQ2.get(buchiTransition.getSucc());
+		// return mInputQGetQ1.get(buchiTransition.getSucc());
 	}
 
 	@Override
