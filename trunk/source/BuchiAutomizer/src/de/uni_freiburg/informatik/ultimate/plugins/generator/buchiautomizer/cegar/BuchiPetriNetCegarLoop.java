@@ -46,9 +46,13 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersect;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectAllAcceptingtNet;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectLooperOptimized;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectLazy;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectUsingSccs;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.Difference;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.DifferencePairwiseOnDemand;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.unfolding.BuchiIsEmpty;
 import de.uni_freiburg.informatik.ultimate.core.model.preferences.IPreferenceProvider;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
@@ -69,6 +73,7 @@ import de.uni_freiburg.informatik.ultimate.plugins.generator.traceabstraction.pr
  *
  * @author Frank Schüssele (schuessf@informatik.uni-freiburg.de)
  * @author Daniel Küchler (kuechlerdaniel33@gmail.com)
+ * @author Manuel Dienert
  *
  * @param <L>
  */
@@ -81,6 +86,10 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 
 	final boolean mUseBuchiPetriOptimizations;
 	final boolean mUseAutomatonForEmptiness;
+
+	// Flags for the Buchi Intersection
+	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
+	private static final boolean SCC_OPTIMIZATION = true;
 
 	boolean USE_LAZY_INTERSECTION = false;
 
@@ -102,38 +111,6 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 				baPref.getBoolean(BuchiAutomizerPreferenceInitializer.LABEL_AUTOMATA_FOR_BUCHI_PETRI_EMTPTINESS);
 	}
 
-	@Override
-	// protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction) throws AutomataLibraryException
-	// {
-	// // do both for testing purposes
-	// // automaton-based
-	// final var automaton = new BuchiPetriNet2FiniteAutomaton<>(new AutomataLibraryServices(mServices),
-	// mStateFactoryForRefinement, mStateFactoryForRefinement, abstraction).getResult();
-	// final var result = new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIsEmpty<>(
-	// new AutomataLibraryServices(mServices), automaton);
-	// final boolean nwaB = result.getResult();
-	//
-	// // Büchi-Petri net based
-	// final var result2 = new BuchiIsEmpty<>(new AutomataLibraryServices(mServices), abstraction, mPref.eventOrder(),
-	// mPref.cutOffRequiresSameTransition(), true);
-	// final boolean netB = result2.getResult();
-	//
-	// // assert (netB == nwaB);
-	// if (netB != nwaB) {
-	// mLogger.info("There's something wrong");
-	// }
-	// if (!netB) {
-	// if (!nwaB) {
-	// final var counterEx = result.getAcceptingNestedLassoRun();
-	// final PetriNetLassoRun<L, IPredicate> run = result2.getRun();
-	// final var counterEx2 = new NestedLassoRun<>(constructNestedLassoRun(run.getStem()),
-	// constructNestedLassoRun(run.getLoop()));
-	// mCounterexample = counterEx2;
-	// }
-	// // return netB;
-	// }
-	// return nwaB;
-	// }
 	protected boolean isAbstractionEmpty(final IPetriNet<L, IPredicate> abstraction) throws AutomataLibraryException {
 		if (mUseAutomatonForEmptiness) {
 			mLogger.info("use automaton for emptiness check");
@@ -182,6 +159,8 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 			return new Difference<>(new AutomataLibraryServices(mServices), mDefaultStateFactory, abstraction,
 					new NestedWordAutomatonReachableStates<>(new AutomataLibraryServices(mServices),
 							interpolantAutomaton)).getResult();
+//			return new DifferencePairwiseOnDemand<>(new AutomataLibraryServices(mServices), abstraction,
+//					interpolantAutomaton).getResult();
 		} catch (AutomataOperationCanceledException | PetriNetNot1SafeException e) {
 			throw new AutomataLibraryException(getClass(), e.toString());
 		}
@@ -203,9 +182,45 @@ public class BuchiPetriNetCegarLoop<L extends IIcfgTransition<?>>
 
 			return intersection.getResult();
 		}
-		final BuchiIntersect<L, IPredicate> intersection = new BuchiIntersect<>(new AutomataLibraryServices(mServices),
-				mDefaultStateFactory, abstraction, complNwa.getResult(), mUseBuchiPetriOptimizations, mIteration == 1);
+		if(mUseBuchiPetriOptimizations) {
+			if (ALL_ACCEPTING_NET_OPTIMIZATION && mIteration == 1
+					&& BuchiIntersectAllAcceptingtNet.isAllAcceptingNet(abstraction)) {
+				final BuchiIntersectAllAcceptingtNet<L, IPredicate> intersection =
+						new BuchiIntersectAllAcceptingtNet<>(new AutomataLibraryServices(mServices), abstraction, complNwa.getResult());
+				return intersection.getResult();
+			}
+
+			if (SCC_OPTIMIZATION) {
+				final BuchiIntersectUsingSccs<L, IPredicate> intersection =
+						new BuchiIntersectUsingSccs<>(new AutomataLibraryServices(mServices),
+				mDefaultStateFactory, abstraction, complNwa.getResult());
+				return intersection.getResult();
+			}
+//		if (ALL_GOAL_AUTOMATON_OPTIMIZATION && BuchiIntersectAllGoalAutomaton.isAllGoalAutomaton(mBuchiAutomaton)) {
+//				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
+//						new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
+//				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+//				return;
+//			}
+//			if (INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION
+//					&& BuchiIntersectAllGoalAutomaton.isInherentlyAllGoalAutomaton(mServices, mBuchiAutomaton)) {
+//				// apart from checking a different condition we can create the same intersection as with allGoal
+//				// automata!!!
+//				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
+//						new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
+//				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+//				return;
+//			}
+		}
+//		final BuchiIntersectDefault<L, IPredicate> intersection =
+//				new BuchiIntersectDefault<L, IPredicate>(new AutomataLibraryServices(mServices),
+//				mDefaultStateFactory, abstraction, complNwa.getResult(), false);
+//		return intersection.getResult();
+		final BuchiIntersect<L, IPredicate> intersection =
+				new BuchiIntersect<L, IPredicate>(new AutomataLibraryServices(mServices),
+				mDefaultStateFactory, abstraction, complNwa.getResult());
 		return intersection.getResult();
+
 	}
 
 	@Override

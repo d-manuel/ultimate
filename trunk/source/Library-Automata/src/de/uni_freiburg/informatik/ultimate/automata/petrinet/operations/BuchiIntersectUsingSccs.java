@@ -49,14 +49,14 @@ import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 import de.uni_freiburg.informatik.ultimate.util.scc.StronglyConnectedComponent;
 
 /**
- * Creates intersection of Buchi Petri net and buchi automata with stem optimization
+ * Creates intersection of Buchi-Petri net and Buchi automata with the SCC Optimization
  *
  * @param <LETTER>
  * @param <PLACE>
  *
  * @author Manuel Dienert
  */
-public class BuchiIntersectStemOptimized<LETTER, PLACE>
+public class BuchiIntersectUsingSccs<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
 	private final BoundedPetriNet<LETTER, PLACE> mPetriNet;
 	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
@@ -69,11 +69,12 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 	private final Set<PLACE> mAcceptingSccPlaces = new HashSet<PLACE>();
 
-	public BuchiIntersectStemOptimized(final AutomataLibraryServices services,
-			final IBlackWhiteStateFactory<PLACE> factory, final BoundedPetriNet<LETTER, PLACE> petriNet,
+	public BuchiIntersectUsingSccs(final AutomataLibraryServices services,
+			final IBlackWhiteStateFactory<PLACE> factory, final IPetriNet<LETTER, PLACE> petriNet,
 			final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton) throws AutomataOperationCanceledException {
 		super(services);
-		mPetriNet = petriNet;
+		// TODO Abstract to also work with IPetriNet
+		mPetriNet = (BoundedPetriNet<LETTER, PLACE>) petriNet;
 		mBuchiAutomaton = buchiAutomaton;
 
 		mLogger.info(startMessage());
@@ -98,12 +99,6 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 	private PLACE inputQGetQ2(final PLACE p) {
 		final PLACE res = mInputQGetQ2.get(p);
-		assert (res != null);
-		return res;
-	}
-
-	private PLACE inputQ2GetQ(final PLACE p) {
-		final PLACE res = mInputQ2GetQ.get(p);
 		assert (res != null);
 		return res;
 	}
@@ -220,7 +215,7 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 		// accepting Buchi state.
 		successors2.add((buchiSuccInScc && !buchiPredAccepting) ? inputQGetQ2(buchiTransition.getSucc())
 				: inputQGetQ1(buchiTransition.getSucc()));
-		// successors2.add(inputQGetQ1(buchiTransition.getSucc()));
+//		 successors2.add(inputQGetQ1(buchiTransition.getSucc()));
 
 		final var trans_1 =
 				mIntersectionNet.addTransition(label, ImmutableSet.of(predecessors1), ImmutableSet.of(successors1));
@@ -230,12 +225,12 @@ public class BuchiIntersectStemOptimized<LETTER, PLACE>
 
 	@Override
 	public String startMessage() {
-		return "Starting StemOptimized Intersection";
+		return "Starting Intersection using SCCs";
 	}
 
 	@Override
 	public String exitMessage() {
-		return "Exiting StemOptimized Intersection";
+		return "Exiting Intersection using SCCs";
 	}
 
 	@Override

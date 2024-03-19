@@ -1,9 +1,6 @@
-package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
 /*
  * Copyright (C) 2022-2023 Daniel Küchler (kuechlerdaniel33@gmail.com)
  * Copyright (C) 2022-2023 University of Freiburg
- * Copyright (C) 2023-2024 Manuel Dienert
- * Copyright (C) 2023-2024 University of Freiburg
  *
  * This file is part of the ULTIMATE Automata Library.
  *
@@ -28,9 +25,15 @@ package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
  * to convey the resulting work.
  */
 
+package de.uni_freiburg.informatik.ultimate.automata.petrinet.operations;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryException;
 import de.uni_freiburg.informatik.ultimate.automata.AutomataLibraryServices;
-import de.uni_freiburg.informatik.ultimate.automata.AutomataOperationCanceledException;
 import de.uni_freiburg.informatik.ultimate.automata.GeneralOperation;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INestedWordAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaInclusionStateFactory;
@@ -38,124 +41,145 @@ import de.uni_freiburg.informatik.ultimate.automata.nestedword.INwaOutgoingLette
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.NestedLassoWord;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.operations.IsIncludedBuchi;
 import de.uni_freiburg.informatik.ultimate.automata.nestedword.reachablestates.NestedWordAutomatonReachableStates;
+import de.uni_freiburg.informatik.ultimate.automata.nestedword.transitions.OutgoingInternalTransition;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.PetriNetUtils;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.Transition;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBlackWhiteStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IBuchiIntersectStateFactory;
 import de.uni_freiburg.informatik.ultimate.automata.statefactory.IPetriNet2FiniteAutomatonStateFactory;
 import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
+import de.uni_freiburg.informatik.ultimate.util.datastructures.ImmutableSet;
 
 /**
- * Abstract class for the intersection of a Büchi-Petri Net and a Büchi automaton.
+ * Creates intersection of Buchi Petri net and buchi automata (eagerly).
  *
  * @param <LETTER>
  * @param <PLACE>
  *
  * @author Daniel Küchler (kuechlerdaniel33@gmail.com)
- * @author Manuel Dienert
  */
 public class BuchiIntersect<LETTER, PLACE>
 		extends GeneralOperation<LETTER, PLACE, IPetriNet2FiniteAutomatonStateFactory<PLACE>> {
-
-	// private boolean REMOVE_DEAD_OPTIMIZATION = false;
-	private static final boolean ALL_GOAL_AUTOMATON_OPTIMIZATION = false;
-	// includes ALL_GOAL_AUTOMATON_OPTIMIZATION but requires SCC Computation:
-	private static final boolean INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION = true;
-	private static final boolean ALL_ACCEPTING_NET_OPTIMIZATION = true;
-	private static final boolean STEM_OPTIMIZATION = true;
-	private static final boolean SELF_LOOP_OPTIMIZATION = false;
-
-	private static final boolean GOAL_TRAP_OPTIMIZATION = false;
-
 	private final IPetriNet<LETTER, PLACE> mPetriNet;
-	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomaton;
+	private final INestedWordAutomaton<LETTER, PLACE> mBuchiAutomata;
 	private final IBlackWhiteStateFactory<PLACE> mLabeledBuchiPlaceFactory;
-	private final AutomataLibraryServices mServices;
+	private final Map<PLACE, PLACE> mInputQGetQ1 = new HashMap<>();
+	private final Map<PLACE, PLACE> mInputQGetQ2 = new HashMap<>();
+	private final Map<PLACE, PLACE> mInputQ2GetQ = new HashMap<>();
 
-	private boolean mFirstIteration;
-	private boolean mUseOptimizations; // flag from preference pane if we should use any intersection
-
-	private BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
+	private final BoundedPetriNet<LETTER, PLACE> mIntersectionNet;
 
 	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton,
-			final boolean useOptimizations, final boolean firstIteration) throws AutomataOperationCanceledException {
+			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomata) {
 		super(services);
-		mFirstIteration = firstIteration;
 		mPetriNet = petriNet;
-		mBuchiAutomaton = buchiAutomaton;
-		mServices = services;
+		mBuchiAutomata = buchiAutomata;
 		mLogger.info(startMessage());
-		if (buchiAutomaton.getInitialStates().size() != 1) {
+		if (buchiAutomata.getInitialStates().size() != 1) {
 			throw new IllegalArgumentException("Buchi with multiple initial states not supported.");
 		}
 		mLabeledBuchiPlaceFactory = factory;
 		mIntersectionNet = new BoundedPetriNet<>(services, petriNet.getAlphabet(), false);
-
-		mUseOptimizations = useOptimizations;
-
-		executeIntersection();
+		constructIntersectionNet();
 		mLogger.info(exitMessage());
-
 	}
 
-	public BuchiIntersect(final AutomataLibraryServices services, final IBlackWhiteStateFactory<PLACE> factory,
-			final IPetriNet<LETTER, PLACE> petriNet, final INestedWordAutomaton<LETTER, PLACE> buchiAutomaton)
-			throws AutomataOperationCanceledException {
-		this(services, factory, petriNet, buchiAutomaton, false, true);
+	private final void constructIntersectionNet() {
+		addPlacesToIntersectionNet();
+		addTransitionsToIntersectionNet();
 	}
 
-	@SuppressWarnings("unused")
-	private void executeIntersection() throws AutomataOperationCanceledException {
-		if (mUseOptimizations) {
-			mLogger.info("use intersection optimizations");
-			// the all goal optimization only makes sense in the first iteration
-			if (ALL_ACCEPTING_NET_OPTIMIZATION && mFirstIteration
-					&& BuchiIntersectAllAcceptingtNet.isAllAcceptingNet(mPetriNet)) {
-				final BuchiIntersectAllAcceptingtNet<LETTER, PLACE> intersection =
-						new BuchiIntersectAllAcceptingtNet<>(mServices, mPetriNet, mBuchiAutomaton);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
-			}
-			if (GOAL_TRAP_OPTIMIZATION && BuchiIntersectGoalTrapped.isGoalTrapped(mBuchiAutomaton)) {
-				final BuchiIntersectGoalTrapped<LETTER, PLACE> intersection = new BuchiIntersectGoalTrapped<>(mServices,
-						mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
-			}
-			if (ALL_GOAL_AUTOMATON_OPTIMIZATION && BuchiIntersectAllGoalAutomaton.isAllGoalAutomaton(mBuchiAutomaton)) {
-				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
-						new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
-			}
-			if (INHERENTLY_ALL_GOAL_AUTOMATON_OPTIMIZATION
-					&& BuchiIntersectAllGoalAutomaton.isInherentlyAllGoalAutomaton(mServices, mBuchiAutomaton)) {
-				// apart from checking a different condition we can create the same intersection as with allGoal
-				// automata!!!
-				final BuchiIntersectAllGoalAutomaton<LETTER, PLACE> intersection =
-						new BuchiIntersectAllGoalAutomaton<>(mServices, mPetriNet, mBuchiAutomaton);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
-			}
-			if (SELF_LOOP_OPTIMIZATION) {
-				final BuchiIntersectDefault<LETTER, PLACE> intersection = new BuchiIntersectDefault<>(mServices,
-						mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, SELF_LOOP_OPTIMIZATION);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
-			}
-			if (STEM_OPTIMIZATION) {
-				final BuchiIntersectStemOptimized<LETTER, PLACE> intersection =
-						new BuchiIntersectStemOptimized<>(mServices, mLabeledBuchiPlaceFactory,
-								(BoundedPetriNet<LETTER, PLACE>) mPetriNet, mBuchiAutomaton);
-				mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
-				return;
+	private final void addPlacesToIntersectionNet() {
+		addOriginalPetriPlaces();
+		addOriginalBuchiPlaces();
+	}
+
+	private final void addOriginalPetriPlaces() {
+		for (final PLACE place : mPetriNet.getPlaces()) {
+			mIntersectionNet.addPlace(place, mPetriNet.getInitialPlaces().contains(place), false);
+		}
+	}
+
+	private final void addOriginalBuchiPlaces() {
+		for (final PLACE place : mBuchiAutomata.getStates()) {
+			final PLACE stateOnePlace = mLabeledBuchiPlaceFactory.getWhiteContent(place);
+			final PLACE stateTwoPlace = mLabeledBuchiPlaceFactory.getBlackContent(place);
+			mIntersectionNet.addPlace(stateOnePlace, mBuchiAutomata.isInitial(place), false);
+			mIntersectionNet.addPlace(stateTwoPlace, false, mBuchiAutomata.isFinal(place));
+			mInputQGetQ1.put(place, stateOnePlace);
+			mInputQGetQ2.put(place, stateTwoPlace);
+			mInputQ2GetQ.put(stateTwoPlace, place);
+		}
+	}
+
+	private final void addTransitionsToIntersectionNet() {
+		for (final Transition<LETTER, PLACE> petriTransition : mPetriNet.getTransitions()) {
+			for (final PLACE buchiPlace : mBuchiAutomata.getStates()) {
+				for (final OutgoingInternalTransition<LETTER, PLACE> buchiTransition : mBuchiAutomata
+						.internalSuccessors(buchiPlace, petriTransition.getSymbol())) {
+					addStateOneAndTwoTransition(petriTransition, buchiTransition, buchiPlace);
+				}
 			}
 		}
-		final BuchiIntersectDefault<LETTER, PLACE> intersection =
-				new BuchiIntersectDefault<>(mServices, mLabeledBuchiPlaceFactory, mPetriNet, mBuchiAutomaton, false);
-		mIntersectionNet = (BoundedPetriNet<LETTER, PLACE>) intersection.getResult();
+	}
+
+	private final void addStateOneAndTwoTransition(final Transition<LETTER, PLACE> petriTransition,
+			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final PLACE buchiPredecessor) {
+		Set<PLACE> predecessorSet = getTransitionPredecessors(petriTransition, buchiPredecessor, true);
+		Set<PLACE> successorSet = getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, true);
+		mIntersectionNet.addTransition(petriTransition.getSymbol(), ImmutableSet.of(predecessorSet),
+				ImmutableSet.of(successorSet));
+		predecessorSet = getTransitionPredecessors(petriTransition, buchiPredecessor, false);
+		successorSet = getTransitionSuccessors(petriTransition, buchiTransition, predecessorSet, false);
+		mIntersectionNet.addTransition(petriTransition.getSymbol(), ImmutableSet.of(predecessorSet),
+				ImmutableSet.of(successorSet));
+	}
+
+	private final Set<PLACE> getTransitionPredecessors(final Transition<LETTER, PLACE> petriTransition,
+			final PLACE buchiPredecessor, final boolean mBuildingStateOneTransition) {
+		final Set<PLACE> predecessorSet = new HashSet<>(petriTransition.getPredecessors());
+		if (mBuildingStateOneTransition) {
+			predecessorSet.add(mInputQGetQ1.get(buchiPredecessor));
+		} else {
+			predecessorSet.add(mInputQGetQ2.get(buchiPredecessor));
+		}
+
+		return predecessorSet;
+	}
+
+	private final Set<PLACE> getTransitionSuccessors(final Transition<LETTER, PLACE> petriTransition,
+			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition, final Set<PLACE> predecessorSet,
+			final boolean mBuildingStateOneTransition) {
+		final Set<PLACE> successorSet = new HashSet<>(petriTransition.getSuccessors());
+		if (mBuildingStateOneTransition) {
+			successorSet.add(getQSuccesorForStateOneTransition(petriTransition, buchiTransition));
+		} else {
+			successorSet.add(getQSuccesorForStateTwoTransition(predecessorSet, buchiTransition));
+		}
+
+		return successorSet;
+	}
+
+	private PLACE getQSuccesorForStateOneTransition(final Transition<LETTER, PLACE> petriTransition,
+			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition) {
+		for (final PLACE place : petriTransition.getSuccessors()) {
+			if (mPetriNet.getAcceptingPlaces().contains(place)) {
+				return mInputQGetQ2.get(buchiTransition.getSucc());
+			}
+		}
+		return mInputQGetQ1.get(buchiTransition.getSucc());
+	}
+
+	private PLACE getQSuccesorForStateTwoTransition(final Set<PLACE> predecessorSet,
+			final OutgoingInternalTransition<LETTER, PLACE> buchiTransition) {
+		for (final PLACE place : predecessorSet) {
+			if (mInputQ2GetQ.containsKey(place) && mBuchiAutomata.getFinalStates().contains(mInputQ2GetQ.get(place))) {
+				return mInputQGetQ1.get(buchiTransition.getSucc());
+			}
+		}
+		return mInputQGetQ2.get(buchiTransition.getSucc());
 	}
 
 	@Override
@@ -173,9 +197,6 @@ public class BuchiIntersect<LETTER, PLACE>
 		return mIntersectionNet;
 	}
 
-	/**
-	 *
-	 */
 	@SuppressWarnings("unchecked")
 	@Override
 	public boolean checkResult(final IPetriNet2FiniteAutomatonStateFactory<PLACE> stateFactory)
@@ -189,7 +210,7 @@ public class BuchiIntersect<LETTER, PLACE>
 
 		final NestedWordAutomatonReachableStates<LETTER, PLACE> automatonIntersection =
 				new de.uni_freiburg.informatik.ultimate.automata.nestedword.buchi.BuchiIntersect<>(mServices,
-						(IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomaton).getResult();
+						(IBuchiIntersectStateFactory<PLACE>) stateFactory, operandAsNwa, mBuchiAutomata).getResult();
 
 		final IsIncludedBuchi<LETTER, PLACE> isSubset = new IsIncludedBuchi<>(mServices,
 				(INwaInclusionStateFactory<PLACE>) stateFactory, resultAsNwa, automatonIntersection);

@@ -25,7 +25,7 @@ import de.uni_freiburg.informatik.ultimate.automata.petrinet.IPetriNet;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetLassoRun;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.PetriNetNot1SafeException;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.netdatastructures.BoundedPetriNet;
-import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectStemOptimized;
+import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiIntersectUsingSccs;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.BuchiPetriNet2FiniteAutomaton;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDead;
 import de.uni_freiburg.informatik.ultimate.automata.petrinet.operations.RemoveDeadBuchi;
@@ -402,7 +402,7 @@ public class BuchiPetriTest {
 		buchiAutomaton.addInternalTransition("q2", "b", "q3");
 
 		final var intersection =
-				new BuchiIntersectStemOptimized<>(mServices, sFactory, petriNet, buchiAutomaton).getResult();
+				new BuchiIntersectUsingSccs<>(mServices, sFactory, petriNet, buchiAutomaton).getResult();
 		mLogger.info(intersection);
 
 	}
