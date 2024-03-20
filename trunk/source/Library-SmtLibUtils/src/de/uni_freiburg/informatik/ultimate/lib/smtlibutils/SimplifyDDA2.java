@@ -27,16 +27,19 @@
  */
 package de.uni_freiburg.informatik.ultimate.lib.smtlibutils;
 
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import de.uni_freiburg.informatik.ultimate.core.lib.exceptions.RunningTaskInfo;
 import de.uni_freiburg.informatik.ultimate.core.lib.exceptions.ToolchainCanceledException;
@@ -44,6 +47,9 @@ import de.uni_freiburg.informatik.ultimate.core.model.services.ILogger;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.TermContextTransformationEngine.DescendResult;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.TermContextTransformationEngine.TermWalker;
+import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.arrays.ArrayIndex;
+import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.arrays.MultiDimensionalSelect;
+import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.arrays.MultiDimensionalSelectOverNestedStore;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.binaryrelation.SolvedBinaryRelation;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.normalforms.NnfTransformer;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.normalforms.NnfTransformer.QuantifierHandling;
@@ -52,7 +58,8 @@ import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.polynomials.Polynomia
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.CondisDepthCodeGenerator.CondisDepthCode;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.Context;
 import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.Context.CcTransformation;
-import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.QuantifierUtils;
+import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.QuantifierOverapproximator;
+import de.uni_freiburg.informatik.ultimate.lib.smtlibutils.quantifier.QuantifierOverapproximator.Quantifier;
 import de.uni_freiburg.informatik.ultimate.logic.ApplicationTerm;
 import de.uni_freiburg.informatik.ultimate.logic.FunctionSymbol;
 import de.uni_freiburg.informatik.ultimate.logic.QuantifiedFormula;
@@ -92,6 +99,23 @@ public class SimplifyDDA2 extends TermWalker<Term> {
 	private static final boolean OVERAPROXIMATE_QUANTIFIED_FORMULAS_IN_CONTEXT = true;
 	private static final boolean SIMPLIFY_REPEATEDLY = true;
 	private static final CheckedNodes CHECKED_NODES = CheckedNodes.ONLY_LEAVES;
+	/**
+	 * Do some overapproximation of quantifiers in the succedent of implications. We
+	 * implement implication checks as satisfiability checks. If this variable is
+	 * set to true, we overapproximate universally quantified formulas. (We keep
+	 * existentially quantified formulas because SMT solver can handle them easily
+	 * via Skolemization. <br>
+	 * This option has no effect if check only leaves.
+	 */
+	private static final boolean OVERAPPROXIMATE_DIFFCULT_QUANTIFIERS_IN_NODES = false;
+	/**
+	 * Try to simplify modulo terms.
+	 */
+	private static final boolean MOD_SIMPLIFICATION = true;
+	/**
+	 * Try to apply a select-over-store simplification.
+	 */
+	private static final boolean ARRAY_SIMPLIFICATION = true;
 
 	/**
 	 * Options for which nodes to check for redundancy. To check redundancy, we
@@ -155,22 +179,46 @@ public class SimplifyDDA2 extends TermWalker<Term> {
 		final List<Term> newParams = new ArrayList<>();
 		if (symb.getName().equals("and")) {
 			for (final Term otherParam : otherParams) {
-				if (!OVERAPROXIMATE_QUANTIFIED_FORMULAS_IN_CONTEXT || QuantifierUtils.isQuantifierFree(otherParam)) {
-					mMgdScript.getScript().assertTerm(otherParam);
-					newParams.add(otherParam);
+				final Term tmp;
+				if (OVERAPROXIMATE_QUANTIFIED_FORMULAS_IN_CONTEXT) {
+					// Replace universally quantified subformula by true.
+					// We keep existentially quantified formulas, they are harmless and handled by
+					// SMT solver via Skolemizations.
+					tmp = replaceUniversalQuantifiersByTrue(mMgdScript, otherParam);
+				} else {
+					tmp = otherParam;
 				}
+				mMgdScript.getScript().assertTerm(tmp);
+				newParams.add(tmp);
 			}
 		}
 
 		if (symb.getName().equals("or")) {
 			for (final Term otherParam : otherParams) {
-				if (!OVERAPROXIMATE_QUANTIFIED_FORMULAS_IN_CONTEXT || QuantifierUtils.isQuantifierFree(otherParam)) {
-					mMgdScript.getScript().assertTerm(SmtUtils.not(mMgdScript.getScript(), otherParam));
-					newParams.add(SmtUtils.not(mMgdScript.getScript(), otherParam));
+				final Term tmp;
+				if (OVERAPROXIMATE_QUANTIFIED_FORMULAS_IN_CONTEXT) {
+					// As above we want to replace universally quantified subformulas by true.
+					// Since we negate the otherParam, we replace instead existentially quantified
+					// subformulas by false.
+					tmp = replaceExistentialQuantifiersByFalse(mMgdScript, otherParam);
+				} else {
+					tmp = otherParam;
 				}
+				mMgdScript.getScript().assertTerm(SmtUtils.not(mMgdScript.getScript(), tmp));
+				newParams.add(SmtUtils.not(mMgdScript.getScript(), tmp));
 			}
 		}
 		return SmtUtils.and(mMgdScript.getScript(), newParams);
+	}
+
+	private Term replaceUniversalQuantifiersByTrue(final ManagedScript mgdScipt, final Term otherParam) {
+		return QuantifierOverapproximator.apply(mgdScipt.getScript(), EnumSet.of(Quantifier.FORALL),
+				mgdScipt.getScript().term("true"), otherParam);
+	}
+
+	private Term replaceExistentialQuantifiersByFalse(final ManagedScript mgdScipt, final Term otherParam) {
+		return QuantifierOverapproximator.apply(mgdScipt.getScript(), EnumSet.of(Quantifier.EXISTS),
+				mgdScipt.getScript().term("false"), otherParam);
 	}
 
 	@Override
@@ -221,26 +269,138 @@ public class SimplifyDDA2 extends TermWalker<Term> {
 	 */
 	private DescendResult checkRedundancy(final Term term) {
 		final Term result;
-		final long timeBeforeConstrainigcheck = System.nanoTime();
-		mNumberOfCheckSatCommands++;
-		final LBool isNonConstraining = Util.checkSat(mMgdScript.getScript(),
-				SmtUtils.not(mMgdScript.getScript(), term));
-		mCheckSatTime += (System.nanoTime() - timeBeforeConstrainigcheck);
-		if (isNonConstraining == LBool.UNSAT) {
-			mNonConstrainingNodes++;
-			result = mMgdScript.getScript().term("true");
-			return new TermContextTransformationEngine.FinalResultForAscend(result);
+		// Some terms are non-contraining and non-relaxing (e.g., if the critical
+		// constraint is `false`) should we then replace by `true` or by `false`?
+		// We decided for `false` (resp. we first check whether the the term
+		// non-constraining) because we think that `false` is typically better for
+		// verification especially for the invariant-based simplification of our CFG.
+		{
+			// Check if formula is non-relaxing.
+			mNumberOfCheckSatCommands++;
+			final long timeBeforeRelaxingcheck = System.nanoTime();
+			final Term rhs;
+			if (OVERAPPROXIMATE_DIFFCULT_QUANTIFIERS_IN_NODES) {
+				rhs = replaceUniversalQuantifiersByTrue(mMgdScript, term);
+			} else {
+				rhs = term;
+			}
+			final LBool isNonRelaxing = Util.checkSat(mMgdScript.getScript(), rhs);
+			mCheckSatTime += (System.nanoTime() - timeBeforeRelaxingcheck);
+			if (isNonRelaxing == LBool.UNSAT) {
+				mNonRelaxingNodes++;
+				result = mMgdScript.getScript().term("false");
+				return new TermContextTransformationEngine.FinalResultForAscend(result);
+			}
 		}
-		mNumberOfCheckSatCommands++;
-		final long timeBeforeRelaxingcheck = System.nanoTime();
-		final LBool isNonRelaxing = Util.checkSat(mMgdScript.getScript(), term);
-		mCheckSatTime += (System.nanoTime() - timeBeforeRelaxingcheck);
-		if (isNonRelaxing == LBool.UNSAT) {
-			mNonRelaxingNodes++;
-			result = mMgdScript.getScript().term("false");
-			return new TermContextTransformationEngine.FinalResultForAscend(result);
+		{
+			// Check if formula is non-constraining.
+			final long timeBeforeConstrainigcheck = System.nanoTime();
+			mNumberOfCheckSatCommands++;
+			final Term rhs;
+			if (OVERAPPROXIMATE_DIFFCULT_QUANTIFIERS_IN_NODES) {
+				rhs = replaceExistentialQuantifiersByFalse(mMgdScript, term);
+			} else {
+				rhs = term;
+			}
+			final LBool isNonConstraining = Util.checkSat(mMgdScript.getScript(),
+					SmtUtils.not(mMgdScript.getScript(), rhs));
+			mCheckSatTime += (System.nanoTime() - timeBeforeConstrainigcheck);
+			if (isNonConstraining == LBool.UNSAT) {
+				mNonConstrainingNodes++;
+				result = mMgdScript.getScript().term("true");
+				return new TermContextTransformationEngine.FinalResultForAscend(result);
+			}
+		}
+		Term termBasedSimplification = term;
+		if (MOD_SIMPLIFICATION) {
+			final Term modSimplificationResult = tryModSimplification(term);
+			if (modSimplificationResult != null) {
+				termBasedSimplification = modSimplificationResult;
+			}
+		}
+		if (ARRAY_SIMPLIFICATION) {
+			final Term arraySimplificationResult = tryArraySimplification(termBasedSimplification);
+			if (arraySimplificationResult != null) {
+				termBasedSimplification = arraySimplificationResult;
+			}
+		}
+		if (termBasedSimplification != term) {
+			return new TermContextTransformationEngine.FinalResultForAscend(termBasedSimplification);
 		}
 		return null;
+	}
+
+	private Term tryModSimplification(final Term term) {
+		final Predicate<Term> p = (x -> (x instanceof ApplicationTerm)
+				&& ((ApplicationTerm) x).getFunction().getName().equals("mod"));
+		final Set<Term> subTerms = SubTermFinder.find(term, p, true);
+		if (subTerms.isEmpty()) {
+			return null;
+		}
+		final Map<Term, Term> substitutionMapping = new HashMap<>();
+		for (final Term subTerm : subTerms) {
+			ModTerm modTerm = ModTerm.of(subTerm);
+			{
+				// Check if we can apply the simplification recursively
+				final Term divident = modTerm.getDivident();
+				final Term tmp = tryModSimplification(divident);
+				if (tmp != null) {
+					modTerm = new ModTerm(tmp, modTerm.getDivisor());
+				}
+			}
+			final Term dividentGeq0 = SmtUtils.geq(mMgdScript.getScript(), modTerm.getDivident(),
+					SmtUtils.constructIntegerValue(mMgdScript.getScript(), SmtSortUtils.getIntSort(mMgdScript),
+							BigInteger.ZERO));
+			final Term dividentSmallerDivisor = SmtUtils.less(mMgdScript.getScript(), modTerm.getDivident(),
+					modTerm.getDivisor());
+			final Term inRange = SmtUtils.and(mMgdScript.getScript(), dividentGeq0, dividentSmallerDivisor);
+			final Term notInRange = SmtUtils.not(mMgdScript.getScript(), inRange);
+			final LBool modIsSuperfluous = Util.checkSat(mMgdScript.getScript(), notInRange);
+			if (modIsSuperfluous == LBool.UNSAT) {
+				substitutionMapping.put(subTerm, modTerm.getDivident());
+			}
+		}
+		if (!substitutionMapping.isEmpty()) {
+			return Substitution.apply(mMgdScript, substitutionMapping, term);
+		} else {
+			return null;
+		}
+	}
+
+	private Term tryArraySimplification(final Term term) {
+		final List<MultiDimensionalSelectOverNestedStore> list = MultiDimensionalSelectOverNestedStore
+				.extractMultiDimensionalSelectOverNestedStore(term, true);
+		if (list.isEmpty()) {
+			return null;
+		}
+		final Map<Term, Term> substitutionMapping = new HashMap<>();
+		for (final MultiDimensionalSelectOverNestedStore mdsons : list) {
+			if (mdsons.getNestedStore().getValues().size() != 1) {
+				continue;
+			}
+			final ArrayIndex storeIndex = mdsons.getNestedStore().getIndices().get(0);
+			final ArrayIndex selectIndex = mdsons.getSelectIndex();
+			final Term idxEquivalence = ArrayIndex.constructIndexEquality(mMgdScript.getScript(), storeIndex,
+					selectIndex);
+			final LBool idxEquivalent = Util.checkSat(mMgdScript.getScript(),
+					SmtUtils.not(mMgdScript.getScript(), idxEquivalence));
+			if (idxEquivalent == LBool.UNSAT) {
+				substitutionMapping.put(mdsons.toTerm(mMgdScript.getScript()),
+						mdsons.getNestedStore().getValues().get(0));
+				continue;
+			}
+			final LBool idxNotEquivalent = Util.checkSat(mMgdScript.getScript(), idxEquivalence);
+			if (idxNotEquivalent == LBool.UNSAT) {
+				final MultiDimensionalSelect mds = new MultiDimensionalSelect(mdsons.getNestedStore().getArray(),
+						mdsons.getSelectIndex());
+				substitutionMapping.put(mdsons.toTerm(mMgdScript.getScript()), mds.toTerm(mMgdScript.getScript()));
+			}
+		}
+		if (!substitutionMapping.isEmpty()) {
+			return Substitution.apply(mMgdScript, substitutionMapping, term);
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -423,6 +583,14 @@ public class SimplifyDDA2 extends TermWalker<Term> {
 
 	public static Term simplify(final IUltimateServiceProvider services, final ManagedScript mgdScript,
 			final Term context, final Term term) {
+		if (SmtUtils.isFalseLiteral(context)) {
+			// Handle this special case immediately. If the context is `false`, the
+			// simplification may return any term, we choose false.
+			// We want to handle this special case here since the later algorithm has the
+			// invariant that the context is never `false`. (Probably this is only an
+			// invariant under certain assumption that have to be determined.)
+			return context;
+		}
 		final SimplifyDDA2 simplifyDDA2 = new SimplifyDDA2(services, mgdScript);
 		// do initial push
 		mgdScript.getScript().push(1);

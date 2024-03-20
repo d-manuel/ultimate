@@ -293,7 +293,7 @@ public class ArrayOccurrenceAnalysis {
 								throw new AssertionError("downgrade");
 							}
 							nas = new MultiDimensionalNestedStore(
-									nas.getInnermost().getOutermost(mScript, mDimensionUpperLimit));
+									nas.extractDowngradeToHigherDimensions(mScript, mDimensionUpperLimit));
 							assert nas.getArray() == mWantedArray;
 						}
 						assert nas.getArray() == mWantedArray;
@@ -312,8 +312,7 @@ public class ArrayOccurrenceAnalysis {
 						}
 					}
 				} else if (fun.equals("select")) {
-					final MultiDimensionalSelectOverNestedStore asos =
-							MultiDimensionalSelectOverNestedStore.convert(mScript, term);
+					final MultiDimensionalSelectOverNestedStore asos = MultiDimensionalSelectOverNestedStore.of(term);
 					if (asos != null) {
 						if (asos.getNestedStore().getArray().equals(mWantedArray)) {
 							if (asos.getNestedStore().getDimension() > mDimensionUpperLimit) {
@@ -328,7 +327,7 @@ public class ArrayOccurrenceAnalysis {
 								return;
 							}
 							mArraySelectOverStores.add(asos);
-							for (final Term indexEntry : asos.getSelect().getIndex()) {
+							for (final Term indexEntry : asos.getSelectIndex()) {
 								walker.enqueueWalker(new MyWalker(indexEntry));
 							}
 							for (final ArrayIndex ai : asos.getNestedStore().getIndices()) {

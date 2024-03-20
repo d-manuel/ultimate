@@ -248,7 +248,7 @@ public class ExpressionResultTransformer {
 		}
 		if (lrVal instanceof LocalLValue) {
 			final CType underlyingType = lrVal.getCType().getUnderlyingType();
-			mCHandler.moveArrayAndStructIdsOnHeap(loc, underlyingType, lrVal.getValue(), expr.getAuxVars(), hook);
+			mCHandler.moveArrayAndStructIdsOnHeap(underlyingType, lrVal.getValue(), hook);
 
 			final CType resultType;
 			if (underlyingType instanceof CArray) {
@@ -464,8 +464,7 @@ public class ExpressionResultTransformer {
 		final AuxVarInfo newArrayAuxvar = mAuxVarInfoBuilder.constructAuxVarInfo(loc, arrayType, SFO.AUXVAR.ARRAYCOPY);
 		final LRValue resultValue = new RValue(newArrayAuxvar.getExp(), arrayType);
 		ExpressionResultBuilder builder = new ExpressionResultBuilder();
-		builder.addDeclaration(newArrayAuxvar.getVarDec());
-		builder.addAuxVar(newArrayAuxvar);
+		builder.addAuxVarWithDeclaration(newArrayAuxvar);
 
 		final Expression newStartAddressBase = MemoryHandler.getPointerBaseAddress(address, loc);
 		final Expression newStartAddressOffset = MemoryHandler.getPointerOffset(address, loc);
@@ -522,7 +521,7 @@ public class ExpressionResultTransformer {
 		if (underlyingType instanceof CPrimitive) {
 			resultEx = mExprTrans.constructBinaryEqualityExpression(loc, IASTBinaryExpression.op_notequals,
 					rVal.getValue(), rVal.getCType(), zero, underlyingType);
-		} else if (underlyingType instanceof CPointer) {
+		} else if (underlyingType instanceof CPointer || underlyingType instanceof CArray) {
 			resultEx = ExpressionFactory.newBinaryExpression(loc, BinaryExpression.Operator.COMPNEQ, rVal.getValue(),
 					zero);
 		} else {
@@ -592,7 +591,7 @@ public class ExpressionResultTransformer {
 				&& (targetCType.getUnderlyingType() instanceof CPointer
 						|| targetCType.getUnderlyingType() instanceof CPrimitive)) {
 			final ExpressionResultBuilder erb = new ExpressionResultBuilder().addAllExceptLrValue(expr);
-			final RValue decayed = mCHandler.decayArrayLrValToPointer(loc, expr.getLrValue(), hook);
+			final RValue decayed = mCHandler.decayArrayLrValToPointer(expr.getLrValue(), hook);
 			return erb.setLrValue(decayed).build();
 		}
 		return switchToRValue(expr, loc, hook);
@@ -653,7 +652,7 @@ public class ExpressionResultTransformer {
 		if (result.getLrValue().getCType().getUnderlyingType() instanceof CArray) {
 			final ExpressionResultBuilder resultBuilder = new ExpressionResultBuilder();
 			resultBuilder.addAllExceptLrValue(result);
-			resultBuilder.setLrValue(mCHandler.decayArrayLrValToPointer(loc, result.getLrValue(), hook));
+			resultBuilder.setLrValue(mCHandler.decayArrayLrValToPointer(result.getLrValue(), hook));
 			return resultBuilder.build();
 		}
 		return result;

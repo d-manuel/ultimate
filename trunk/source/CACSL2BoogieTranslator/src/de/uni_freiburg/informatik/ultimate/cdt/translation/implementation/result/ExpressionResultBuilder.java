@@ -143,8 +143,9 @@ public class ExpressionResultBuilder {
 		return this;
 	}
 
-	public ExpressionResultBuilder addAuxVar(final AuxVarInfo auxvar) {
+	public ExpressionResultBuilder addAuxVarWithDeclaration(final AuxVarInfo auxvar) {
 		mAuxVars.add(auxvar);
+		mDeclarations.add(auxvar.getVarDec());
 		return this;
 	}
 
@@ -173,6 +174,16 @@ public class ExpressionResultBuilder {
 	public ExpressionResultBuilder addAllExceptLrValue(final ExpressionResult exprResult) {
 		addStatements(exprResult.getStatements());
 		addAllExceptLrValueAndStatements(exprResult);
+		return this;
+	}
+
+	public ExpressionResultBuilder addAllExceptLrValueAndOverapproximation(final ExpressionResult exprResult) {
+		addStatements(exprResult.getStatements());
+		addDeclarations(exprResult.getDeclarations());
+		addAuxVars(exprResult.getAuxVars());
+		if (exprResult.getNeighbourUnionFields() != null && !exprResult.getNeighbourUnionFields().isEmpty()) {
+			addNeighbourUnionFields(exprResult.getNeighbourUnionFields());
+		}
 		return this;
 	}
 

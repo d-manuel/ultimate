@@ -27,17 +27,25 @@
 
 package de.uni_freiburg.informatik.ultimate.plugins.generator.cacsl2boogietranslator.witness;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 
 import org.eclipse.cdt.core.dom.ast.ASTGenericVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 
+import de.uni_freiburg.informatik.ultimate.cdt.translation.LineOffsetComputer;
+import de.uni_freiburg.informatik.ultimate.cdt.translation.implementation.LocationFactory;
+import de.uni_freiburg.informatik.ultimate.core.model.models.ILocation;
 import de.uni_freiburg.informatik.ultimate.core.model.services.IUltimateServiceProvider;
-import de.uni_freiburg.informatik.ultimate.util.datastructures.relation.HashRelation;
+import de.uni_freiburg.informatik.ultimate.util.datastructures.DataStructureUtils;
+import de.uni_freiburg.informatik.ultimate.witnessparser.yaml.FunctionContract;
+import de.uni_freiburg.informatik.ultimate.witnessparser.yaml.Location;
 import de.uni_freiburg.informatik.ultimate.witnessparser.yaml.LocationInvariant;
 import de.uni_freiburg.informatik.ultimate.witnessparser.yaml.LoopInvariant;
 import de.uni_freiburg.informatik.ultimate.witnessparser.yaml.Witness;
@@ -66,87 +74,122 @@ public class YamlCorrectnessWitnessExtractor extends CorrectnessWitnessExtractor
 	}
 
 	@Override
-	protected HashRelation<IASTNode, IExtractedWitnessEntry> computeWitnessEntries() {
-		final HashRelation<IASTNode, IExtractedWitnessEntry> rtr = new HashRelation<>();
+	protected ExtractedCorrectnessWitness extractWitness() {
+		// TODO: The column extraction happens in LocationFactory, so we create one as a workaround
+		final LocationFactory locationFactory =
+				new LocationFactory(null, new LineOffsetComputer(mTranslationUnit.getRawSignature()));
+		final Map<IASTNode, ExtractedLoopInvariant> loopInvariants = new HashMap<>();
+		final Map<IASTNode, ExtractedLocationInvariant> locationInvariants = new HashMap<>();
+		final ExtractedCorrectnessWitness rtr = new ExtractedCorrectnessWitness();
 		for (final WitnessEntry entry : mWitness.getEntries()) {
-			final int line;
-			if (entry instanceof LocationInvariant && !mCheckOnlyLoopInvariants) {
-				line = ((LocationInvariant) entry).getLocation().getLine();
+			final Location location;
+			final Consumer<IASTNode> addFunction;
+			if (entry instanceof LocationInvariant) {
+				if (mCheckOnlyLoopInvariants) {
+					continue;
+				}
+				location = ((LocationInvariant) entry).getLocation();
+				addFunction = node -> addLocationInvariant((LocationInvariant) entry, node, locationInvariants);
 			} else if (entry instanceof LoopInvariant) {
-				line = ((LoopInvariant) entry).getLocation().getLine();
+				location = ((LoopInvariant) entry).getLocation();
+				addFunction = node -> addLoopInvariant((LoopInvariant) entry, node, loopInvariants);
+			} else if (entry instanceof FunctionContract) {
+				location = ((FunctionContract) entry).getLocation();
+				addFunction = node -> addFunctionContract((FunctionContract) entry, node, rtr);
 			} else {
-				mStats.fail();
-				continue;
+				throw new UnsupportedOperationException("Unknown entry type " + entry.getClass().getSimpleName());
 			}
-			final LineMatchingVisitor visitor = new LineMatchingVisitor(line);
+			final LineColumnMatchingVisitor visitor = new LineColumnMatchingVisitor(location, locationFactory);
 			visitor.run(mTranslationUnit);
-			final Set<IASTNode> matchesBefore = visitor.getMatchedNodesBefore();
-			final Set<IASTNode> matchesAfter = visitor.getMatchedNodesAfter();
-			if (matchesBefore.isEmpty() && matchesAfter.isEmpty()) {
-				mStats.fail();
-				continue;
+			final Set<IASTNode> matches = visitor.getMatchedNodes();
+			if (matches.isEmpty()) {
+				if (mIgnoreUnmatchedEntries) {
+					mStats.fail();
+					continue;
+				}
+				throw new UnsupportedOperationException("The following witness entry could not be matched: " + entry);
 			}
-			extractFromEntry(entry, matchesBefore, matchesAfter, rtr);
+			matches.forEach(addFunction);
 			mStats.success();
 		}
-
+		rtr.addWitnessStatements(loopInvariants);
+		rtr.addWitnessStatements(locationInvariants);
 		return rtr;
+
 	}
 
-	private static void extractFromEntry(final WitnessEntry entry, final Set<IASTNode> matchesBefore,
-			final Set<IASTNode> matchesAfter, final HashRelation<IASTNode, IExtractedWitnessEntry> entries) {
-		final Set<String> labels = Set.of(entry.getMetadata().getUuid().toString());
-		if (entry instanceof LoopInvariant) {
-			final String invariant = ((LoopInvariant) entry).getInvariant().getExpression();
-			Stream.concat(matchesBefore.stream(), matchesAfter.stream())
-					.forEach(x -> entries.addPair(x, new ExtractedLoopInvariant(invariant, labels, x)));
-		} else if (entry instanceof LocationInvariant) {
-			final String invariant = ((LocationInvariant) entry).getInvariant().getExpression();
-			matchesBefore.stream()
-					.forEach(x -> entries.addPair(x, new ExtractedLocationInvariant(invariant, labels, x, true)));
-			matchesAfter.stream()
-					.forEach(x -> entries.addPair(x, new ExtractedLocationInvariant(invariant, labels, x, false)));
-		} else {
-			throw new AssertionError("Unknown witness type " + entry.getClass().getSimpleName());
+	private static void addFunctionContract(final FunctionContract functionContract, final IASTNode node,
+			final ExtractedCorrectnessWitness result) {
+		if (!(node instanceof IASTSimpleDeclaration) && !(node instanceof IASTFunctionDefinition)) {
+			throw new UnsupportedOperationException(
+					"Function contract is only allowed at declaration or definition of a function (found "
+							+ node.getClass().getSimpleName() + ")");
 		}
+		result.addFunctionContract(node,
+				new ExtractedFunctionContract(functionContract.getRequires(), functionContract.getEnsures(), node));
 	}
 
-	private static final class LineMatchingVisitor extends ASTGenericVisitor {
-		private final Set<IASTNode> mMatchedNodesBefore = new HashSet<>();
-		private final Set<IASTNode> mMatchedNodesAfter = new HashSet<>();
-		private final int mLine;
+	private static void addLocationInvariant(final LocationInvariant current, final IASTNode node,
+			final Map<IASTNode, ExtractedLocationInvariant> locationInvariants) {
+		String invariant = current.getInvariant().getExpression();
+		Set<String> labels = Set.of(current.getMetadata().getUuid().toString());
+		final ExtractedLocationInvariant old = locationInvariants.get(node);
+		if (old != null) {
+			invariant = conjunctInvariants(old.getInvariant(), invariant);
+			labels = DataStructureUtils.union(old.getNodeLabels(), labels);
+		}
+		locationInvariants.put(node, new ExtractedLocationInvariant(invariant, labels, node, true));
+	}
 
-		public LineMatchingVisitor(final int line) {
+	private static void addLoopInvariant(final LoopInvariant current, final IASTNode node,
+			final Map<IASTNode, ExtractedLoopInvariant> loopInvariants) {
+		String invariant = current.getInvariant().getExpression();
+		Set<String> labels = Set.of(current.getMetadata().getUuid().toString());
+		final ExtractedLoopInvariant old = loopInvariants.get(node);
+		if (old != null) {
+			invariant = conjunctInvariants(old.getInvariant(), invariant);
+			labels = DataStructureUtils.union(old.getNodeLabels(), labels);
+		}
+		loopInvariants.put(node, new ExtractedLoopInvariant(invariant, labels, node));
+	}
+
+	private static String conjunctInvariants(final String invariant1, final String invariant2) {
+		return "(" + invariant1 + ") && (" + invariant2 + ")";
+	}
+
+	private static final class LineColumnMatchingVisitor extends ASTGenericVisitor {
+		private final Set<IASTNode> mMatchedNodes = new HashSet<>();
+		private final Location mLocation;
+		private final LocationFactory mLocationFactory;
+
+		public LineColumnMatchingVisitor(final Location location, final LocationFactory locationFactory) {
 			super(true);
-			mLine = line;
+			mLocation = location;
+			mLocationFactory = locationFactory;
 		}
 
 		public void run(final IASTTranslationUnit translationUnit) {
 			translationUnit.accept(this);
 		}
 
-		public Set<IASTNode> getMatchedNodesBefore() {
-			return mMatchedNodesBefore;
-		}
-
-		public Set<IASTNode> getMatchedNodesAfter() {
-			return mMatchedNodesAfter;
+		public Set<IASTNode> getMatchedNodes() {
+			return mMatchedNodes;
 		}
 
 		@Override
 		protected int genericVisit(final IASTNode node) {
-			final IASTFileLocation loc = node.getFileLocation();
+			if (node instanceof IASTTranslationUnit) {
+				return PROCESS_CONTINUE;
+			}
+			final ILocation loc = mLocationFactory.createCLocation(node);
 			if (loc == null) {
 				return PROCESS_CONTINUE;
 			}
-			// TODO: Check for the column as well (needs some work to extract it from the offset)
-			if (mLine == loc.getStartingLineNumber()) {
-				mMatchedNodesBefore.add(node);
-				// skip the subtree if a match occurred, but continue with siblings.
-				return PROCESS_SKIP;
-			}
-			if (mLine == loc.getEndingLineNumber()) {
-				mMatchedNodesAfter.add(node);
+			// Match before the AST node, if the line matches and either the column is not present (it can be omitted;
+			// should be matched the first node of the line in that case) or it also matches the AST node
+			if (mLocation.getLine() == loc.getStartLine()
+					&& (mLocation.getColumn() == null || mLocation.getColumn() == loc.getStartColumn())) {
+				mMatchedNodes.add(node);
 				// skip the subtree if a match occurred, but continue with siblings.
 				return PROCESS_SKIP;
 			}

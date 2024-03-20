@@ -414,6 +414,10 @@ public class InitializationHandler {
 				obtainLhsToInitialize(loc, lhsIfAny, cStructType, onHeap, initialization);
 
 		for (int i = 0; i < cStructType.getFieldCount(); i++) {
+			final CType currentFieldUnderlyingType = cStructType.getFieldTypes()[i].getUnderlyingType();
+			if (currentFieldUnderlyingType instanceof CArray && currentFieldUnderlyingType.isIncomplete()) {
+				continue;
+			}
 
 			if (CStructOrUnion.isUnion(cStructType) && onHeap && !initInfo.hasInitInfoForIndex(i)) {
 				// in on-heap case: skip assignments to fields of unions except for the one that is really written
@@ -433,7 +437,6 @@ public class InitializationHandler {
 
 			final ExpressionResult currentFieldInitialization;
 			{
-				final CType currentFieldUnderlyingType = cStructType.getFieldTypes()[i].getUnderlyingType();
 				final InitializerInfo currentFieldInitializerRawIfAny =
 						initInfo.hasInitInfoForIndex(i) ? initInfo.getInitInfoForIndex(i) : null;
 
@@ -788,7 +791,7 @@ public class InitializationHandler {
 	private ExpressionResult makeUnionAuxVarExpressionResult(final ILocation loc, final CType fieldType) {
 		final AuxVarInfo auxVar = mAuxVarInfoBuilder.constructAuxVarInfo(loc, fieldType, SFO.AUXVAR.NONDET);
 		return new ExpressionResultBuilder().setLrValue(new RValue(auxVar.getExp(), fieldType))
-				.addDeclaration(auxVar.getVarDec()).addAuxVar(auxVar)
+				.addAuxVarWithDeclaration(auxVar)
 				.addOverapprox(
 						new Overapprox("initialize union -- havoccing a field without explictit " + "initializer", loc))
 				.build();
@@ -916,8 +919,7 @@ public class InitializationHandler {
 	private LocalLValue obtainAuxVarLocalLValue(final ILocation loc, final CType cType,
 			final ExpressionResultBuilder initialization) {
 		final AuxVarInfo auxVar = mAuxVarInfoBuilder.constructAuxVarInfo(loc, cType);
-		initialization.addDeclaration(auxVar.getVarDec());
-		initialization.addAuxVar(auxVar);
+		initialization.addAuxVarWithDeclaration(auxVar);
 		final LocalLValue arrayLhsToInitialize = new LocalLValue(auxVar.getLhs(), cType, null);
 		initialization.setLrValue(arrayLhsToInitialize);
 		return arrayLhsToInitialize;
@@ -1043,6 +1045,10 @@ public class InitializationHandler {
 					.mapToLong(t -> countNumberOfPrimitiveElementInType(t, hook)).sum();
 		}
 		if (cType instanceof CArray) {
+			if (cType.isIncomplete()) {
+				// An incomplete array can be the last member of a struct. It is not copied, so we return 0 here.
+				return 0;
+			}
 			final CArray cArray = (CArray) cType;
 			final long innerCount = countNumberOfPrimitiveElementInType(cArray.getValueType(), hook);
 			final BigInteger boundBig = mTypeSizes.extractIntegerValue(cArray.getBound());
@@ -1058,7 +1064,7 @@ public class InitializationHandler {
 
 		final List<Integer> arrayBounds = CTranslationUtil.getConstantDimensionsOfArray(cArrayType, mTypeSizes);
 
-		Integer product = 0;
+		int product = 0;
 		for (int i = 0; i < arrayIndex.size(); i++) {
 			final int factor = i == arrayIndex.size() - 1 ? 1 : arrayBounds.get(i + 1);
 			product = product + factor * arrayIndex.get(i);
@@ -1066,7 +1072,7 @@ public class InitializationHandler {
 		final CPrimitive sizeT = mTypeSetAndOffsetComputer.getSizeT();
 
 		final Expression flatCellNumber =
-				mTypeSizes.constructLiteralForIntegerType(loc, sizeT, new BigInteger(product.toString()));
+				mTypeSizes.constructLiteralForIntegerType(loc, sizeT, new BigInteger(Integer.toString(product)));
 
 		final Expression pointerBase = MemoryHandler.getPointerBaseAddress(arrayBaseAddress.getAddress(), loc);
 		final Expression pointerOffset = MemoryHandler.getPointerOffset(arrayBaseAddress.getAddress(), loc);
